@@ -20,13 +20,18 @@ const Waitlist = () => {
       return;
     }
 
-    // For now, just show success. Backend can be added later.
     setSubmitted(true);
   };
 
   return (
-    <section id="waitlist" className="py-24 md:py-32 bg-secondary">
-      <div className="max-w-6xl mx-auto px-6 lg:px-8">
+    <section id="waitlist" className="py-24 md:py-32 relative overflow-hidden">
+      {/* Subtle background texture */}
+      <div className="absolute inset-0 opacity-[0.02]" style={{
+        backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,
+        backgroundSize: '40px 40px',
+      }} />
+
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 relative">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -34,6 +39,12 @@ const Waitlist = () => {
           transition={{ duration: 0.5 }}
           className="max-w-xl mx-auto text-center"
         >
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="h-px w-8 bg-foreground" />
+            <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Early Access</span>
+            <div className="h-px w-8 bg-foreground" />
+          </div>
+
           <h2 className="font-serif text-3xl md:text-4xl text-foreground mb-4">
             Join the Waitlist
           </h2>
@@ -64,7 +75,7 @@ const Waitlist = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
-                  className="w-full h-12 px-4 rounded-md border border-input bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-secondary"
+                  className="w-full h-12 px-4 rounded-md border border-input bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-shadow"
                   maxLength={255}
                 />
                 {error && (

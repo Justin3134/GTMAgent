@@ -49,7 +49,7 @@ const members = [
     role: "Software Engineer",
     bio: "Full stack engineer with 10+ years building and shipping AI, fintech, and production systems. Former CTO who's led end-to-end development of scalable applications.",
     img: justinImg,
-    linkedin: "",
+    linkedin: "https://www.linkedin.com/in/junhyun-kim-15840128b/",
   },
 ];
 
@@ -64,26 +64,31 @@ const Team = () => {
           transition={{ duration: 0.5 }}
           className="mb-16"
         >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-px w-8 bg-foreground" />
+            <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Our People</span>
+          </div>
           <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-4">Leadership</h2>
           <p className="text-muted-foreground text-lg max-w-xl">
             Built by experts in cryptography, AI, and enterprise security.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
           {members.map((m, i) => (
             <motion.div
               key={m.name}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.4, delay: i * 0.05 }}
+              transition={{ duration: 0.5, delay: i * 0.07 }}
+              className="group"
             >
-              <div className="aspect-[3/4] overflow-hidden rounded-lg bg-accent mb-5">
+              <div className="aspect-[3/4] overflow-hidden rounded-lg bg-accent mb-5 relative">
                 <img
                   src={m.img}
                   alt={m.name}
-                  className="w-full h-full object-cover object-top grayscale hover:grayscale-0 transition-all duration-500"
+                  className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-[1.02]"
                 />
               </div>
               <div className="flex items-start justify-between gap-2">

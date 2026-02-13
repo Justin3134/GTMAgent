@@ -1,25 +1,36 @@
 import { motion } from "framer-motion";
+import { Shield, Cpu, Landmark, Building2, Lock, HeartPulse } from "lucide-react";
 
 const items = [
   {
     title: "Agentic AI Platforms",
     desc: "Automated systems and orchestration layers executing autonomous workflows.",
+    icon: Cpu,
   },
   {
     title: "AI Hardware & Edge",
     desc: "Cyber‑physical environments and edge computing where actions are irreversible.",
+    icon: Shield,
   },
   {
     title: "Financial Systems",
     desc: "Payment infrastructure and financial execution requiring human authorization.",
+    icon: Landmark,
   },
   {
     title: "Government & Defense",
     desc: "Critical infrastructure and mission‑critical systems demanding accountability.",
+    icon: Building2,
   },
   {
     title: "Enterprise Security",
     desc: "High‑risk actions beyond IAM that need execution‑time trust verification.",
+    icon: Lock,
+  },
+  {
+    title: "Healthcare & Life Sciences",
+    desc: "Patient‑critical systems and regulated environments where every action must be traceable.",
+    icon: HeartPulse,
   },
 ];
 
@@ -34,6 +45,10 @@ const BuiltFor = () => {
           transition={{ duration: 0.5 }}
           className="mb-16"
         >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-px w-8 bg-foreground" />
+            <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Industries</span>
+          </div>
           <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-4">
             Built For
           </h2>
@@ -46,15 +61,18 @@ const BuiltFor = () => {
           {items.map((item, i) => (
             <motion.div
               key={item.title}
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="bg-background p-8 lg:p-10"
+              transition={{ duration: 0.4, delay: i * 0.06 }}
+              className="bg-background p-8 lg:p-10 group hover:bg-accent/50 transition-colors duration-300"
             >
-              <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-4 block">
-                {String(i + 1).padStart(2, "0")}
-              </span>
+              <div className="flex items-start justify-between mb-5">
+                <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <item.icon size={20} className="text-muted-foreground/40 group-hover:text-foreground/60 transition-colors duration-300" />
+              </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
             </motion.div>

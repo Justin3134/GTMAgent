@@ -28,6 +28,10 @@ const About = () => {
           transition={{ duration: 0.5 }}
           className="max-w-3xl mb-20"
         >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-px w-8 bg-foreground" />
+            <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">The Problem</span>
+          </div>
           <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-8">
             About QSVA
           </h2>
@@ -63,11 +67,18 @@ const About = () => {
               within an execution path. That proof:
             </p>
             <ul className="space-y-4">
-              {proofPoints.map((point) => (
-                <li key={point} className="flex items-center gap-4">
+              {proofPoints.map((point, i) => (
+                <motion.li
+                  key={point}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: i * 0.08 }}
+                  className="flex items-center gap-4"
+                >
                   <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0" />
                   <span className="text-sm font-medium text-foreground">{point}</span>
-                </li>
+                </motion.li>
               ))}
             </ul>
           </motion.div>
@@ -80,11 +91,18 @@ const About = () => {
           >
             <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">What Systems Gain</h3>
             <ul className="space-y-4">
-              {gains.map((gain) => (
-                <li key={gain} className="flex items-start gap-4">
+              {gains.map((gain, i) => (
+                <motion.li
+                  key={gain}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: i * 0.06 }}
+                  className="flex items-start gap-4"
+                >
                   <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0 mt-2" />
                   <span className="text-sm text-muted-foreground leading-relaxed">{gain}</span>
-                </li>
+                </motion.li>
               ))}
             </ul>
           </motion.div>
@@ -98,9 +116,9 @@ const About = () => {
           transition={{ duration: 0.5 }}
           className="mt-24 border-l-2 border-foreground pl-8 py-2 max-w-3xl"
         >
-          <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed">
-            QSVA does not replace autonomy.
-            It defines the boundary where autonomy must stop.
+          <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed italic">
+            "QSVA does not replace autonomy.
+            It defines the boundary where autonomy must stop."
           </p>
         </motion.div>
       </div>
