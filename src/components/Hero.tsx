@@ -76,14 +76,6 @@ const Hero = () => {
               </a>
             </motion.div>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.9 }}
-              className="text-xs text-muted-foreground mt-4 tracking-wide"
-            >
-              Now working with select design partners
-            </motion.p>
           </div>
 
           {/* Decorative logo mark */}
