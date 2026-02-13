@@ -36,7 +36,7 @@ const Navbar = () => {
     >
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <img src={qsvaLogoBlack} alt="QSVA" className="h-8 w-8" />
+          <img src={qsvaLogoBlack} alt="QSVA" className="h-9 w-auto" />
           <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
         </a>
 
