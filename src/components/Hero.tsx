@@ -95,7 +95,7 @@ const Hero = () => {
             transition={{ duration: 1.2, delay: 0.4 }}
             className="hidden lg:block"
           >
-            <img src={qsvaLogoBlack} alt="" className="w-96 xl:w-[28rem] select-none pointer-events-none" aria-hidden="true" />
+            <img src={qsvaLogoBlack} alt="" className="w-72 xl:w-80 select-none pointer-events-none" aria-hidden="true" />
           </motion.div>
         </div>
       </div>
