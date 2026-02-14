@@ -34,15 +34,28 @@ const items = [
   },
 ];
 
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.07,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
+  },
+};
+
 const BuiltFor = () => {
-  const prefersReduced = useReducedMotion();
-
-  const cardTransition = (i: number) => ({
-    duration: prefersReduced ? 0 : 0.55,
-    delay: prefersReduced ? 0 : i * 0.04,
-    ease: [0.22, 1, 0.36, 1] as const,
-  });
-
   return (
     <section id="built-for" className="py-20 md:py-28 bg-secondary relative">
       {/* Decorative vertical line */}
@@ -69,14 +82,17 @@ const BuiltFor = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-lg overflow-hidden">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-lg overflow-hidden"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.15 }}
+        >
           {items.map((item, i) => (
             <motion.div
               key={item.title}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={cardTransition(i)}
+              variants={cardVariants}
               className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative"
             >
               {/* Hover accent line */}
@@ -92,7 +108,7 @@ const BuiltFor = () => {
               <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0 }}
