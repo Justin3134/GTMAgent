@@ -36,7 +36,7 @@ const items = [
 
 const BuiltFor = () => {
   return (
-    <section id="built-for" className="py-20 md:py-28 bg-secondary relative">
+    <section id="built-for" className="py-20 md:py-28 relative">
       {/* Decorative vertical line */}
       <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
 
@@ -53,10 +53,11 @@ const BuiltFor = () => {
             <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Industries</span>
           </div>
           <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-4">
-            Built For
+            Built for Autonomous Execution Risk
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl">
-            QSVA is built for teams accountable for execution risk across critical systems.
+          <p className="text-muted-foreground text-lg max-w-2xl">
+            QSVA is built for teams deploying agentic systems where mistakes are irreversible,
+            including:
           </p>
         </motion.div>
 

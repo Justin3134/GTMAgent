@@ -16,61 +16,92 @@ const gains = [
   "Compatibility with existing IAM and identity platforms",
 ];
 
+const failurePoints = [
+  "Accountability breaks",
+  "Non‑repudiation disappears",
+  "Errors scale into systemic failures",
+];
+
+const sectionFade = {
+  initial: { opacity: 0, y: 15 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-80px" },
+  transition: { duration: 0.5 },
+};
+
 const About = () => {
   return (
-    <section id="about" className="py-20 md:py-28 relative">
+    <section id="about" className="relative">
       {/* Decorative vertical line */}
       <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
 
-      <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        {/* Intro */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5 }}
-          className="max-w-3xl mb-16"
-        >
-          <div className="flex items-center gap-4 mb-4">
-            <div className="h-px w-8 bg-foreground" />
-            <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">The Problem</span>
-          </div>
-          <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-8">
-            About QSVA
-          </h2>
-          <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
-            <p>
-              Agentic systems don't just execute commands — they decide what actions to take.
-              They initiate financial transfers, modify infrastructure, recover systems, and act
-              across distributed environments without continuous human supervision.
-            </p>
-            <p>
-              IAM, MFA, and device trust were designed for human‑initiated sessions, not for systems
-              that generate intent and execute actions autonomously. As agentic systems scale, the
-              question is no longer <em className="text-foreground not-italic font-medium">who logged in</em> — it's{" "}
-              <em className="text-foreground not-italic font-medium">who approved this specific action at the moment it executed</em>.
-            </p>
-          </div>
-        </motion.div>
+      {/* ─── Part 1: The Problem ─── */}
+      <div className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+          <motion.div {...sectionFade} className="max-w-3xl mb-16">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-px w-8 bg-foreground" />
+              <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">The Problem</span>
+            </div>
+            <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-8">
+              About QSVA
+            </h2>
+            <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
+              <p>
+                Agentic systems don't just execute commands — they decide what actions to take.
+              </p>
+              <p>
+                They initiate financial transfers, modify infrastructure, recover systems, spawn workflows,
+                and act across distributed environments without continuous human supervision.
+              </p>
+              <p className="text-foreground font-medium">
+                This breaks the assumptions behind modern security.
+              </p>
+              <p>
+                IAM, MFA, and device trust were designed for human‑initiated sessions, not for systems
+                that generate intent and execute actions autonomously.
+              </p>
+              <p>
+                As agentic systems scale, the question is no longer{" "}
+                <em className="text-foreground not-italic font-medium">who logged in</em> — it's{" "}
+                <em className="text-foreground not-italic font-medium">who approved this specific action at the moment it executed</em>.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
 
-        {/* Divider */}
-        <div className="h-px bg-border mb-16" />
+      {/* ─── Part 2: The Missing Control ─── */}
+      <div className="py-20 md:py-28 bg-secondary">
+        <div className="absolute left-1/2 w-px h-16 bg-gradient-to-b from-border to-transparent hidden md:block" style={{ marginTop: '-4rem' }} />
+        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+          <motion.div {...sectionFade} className="max-w-3xl mb-12">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-px w-8 bg-foreground" />
+              <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">The Gap</span>
+            </div>
+            <h2 className="font-serif text-3xl md:text-4xl text-foreground mb-8">
+              The Missing Control in Agentic Execution
+            </h2>
+            <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
+              <p>
+                Once access is granted, agentic systems operate inside trusted environments and execute
+                high‑risk, irreversible actions without cryptographic proof that a real human approved
+                them at execution time.
+              </p>
+              <p>
+                Guardrails, monitoring, and audit observe behavior.{" "}
+                <em className="text-foreground not-italic font-medium">They do not enforce human authorization when actions commit.</em>
+              </p>
+            </div>
+          </motion.div>
 
-        {/* Two columns */}
-        <div className="grid md:grid-cols-2 gap-16 md:gap-24">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.5 }}
-          >
-            <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">How QSVA Works</h3>
-            <p className="text-muted-foreground mb-8 leading-relaxed">
-              QSVA converts a human decision into cryptographic proof bound to a single action
-              within an execution path. That proof:
+          <motion.div {...sectionFade} className="max-w-3xl">
+            <p className="text-muted-foreground text-base md:text-lg mb-6">
+              For agentic systems, this gap is existential:
             </p>
-            <ul className="space-y-5">
-              {proofPoints.map((point, i) => (
+            <ul className="space-y-4 mb-10">
+              {failurePoints.map((point, i) => (
                 <motion.li
                   key={point}
                   initial={{ opacity: 0, x: -10 }}
@@ -79,51 +110,151 @@ const About = () => {
                   transition={{ duration: 0.3, delay: i * 0.08 }}
                   className="flex items-center gap-4"
                 >
-                  <span className="w-6 h-px bg-foreground flex-shrink-0" />
+                  <span className="w-6 h-px bg-destructive flex-shrink-0" />
                   <span className="text-sm font-medium text-foreground">{point}</span>
                 </motion.li>
               ))}
             </ul>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">What Systems Gain</h3>
-            <ul className="space-y-5">
-              {gains.map((gain, i) => (
-                <motion.li
-                  key={gain}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: i * 0.06 }}
-                  className="flex items-start gap-4"
-                >
-                  <span className="w-6 h-px bg-muted-foreground flex-shrink-0 mt-2.5" />
-                  <span className="text-sm text-muted-foreground leading-relaxed">{gain}</span>
-                </motion.li>
-              ))}
-            </ul>
+            <p className="text-foreground font-medium text-base md:text-lg">
+              QSVA exists to provide the control agentic systems require.
+            </p>
           </motion.div>
         </div>
+      </div>
 
-        {/* Callout */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mt-20 border-l-2 border-foreground pl-8 py-2 max-w-3xl"
-        >
-          <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed italic">
-            "QSVA does not replace autonomy.
-            It defines the boundary where autonomy must stop."
-          </p>
-        </motion.div>
+      {/* ─── Part 3: Execution‑Time Trust ─── */}
+      <div className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+          <motion.div {...sectionFade} className="max-w-3xl mb-16">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-px w-8 bg-foreground" />
+              <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">A New Category</span>
+            </div>
+            <h2 className="font-serif text-3xl md:text-4xl text-foreground mb-8">
+              Execution‑Time Trust
+            </h2>
+            <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
+              <p>
+                QSVA introduces an authorization control architecture designed specifically for agentic systems.
+              </p>
+              <p>
+                It operates after access is granted and immediately before execution, where decisions become irreversible.
+              </p>
+              <p>
+                Instead of trusting sessions, devices, or prior authentication, QSVA cryptographically binds
+                a real human's approval to a specific action, producing proof that is:
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div {...sectionFade} className="max-w-3xl mb-16">
+            <div className="grid grid-cols-2 gap-px bg-border rounded-lg overflow-hidden max-w-md">
+              {["Verified in real time", "Auditable after execution"].map((item) => (
+                <div key={item} className="bg-background p-6">
+                  <p className="text-sm font-medium text-foreground">{item}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-muted-foreground mt-8 text-base md:text-lg leading-relaxed">
+              This enables agentic systems to act autonomously until a boundary that requires human authority is reached.
+            </p>
+          </motion.div>
+
+          {/* Divider */}
+          <div className="h-px bg-border mb-16" />
+
+          {/* Two columns: How + What */}
+          <div className="grid md:grid-cols-2 gap-16 md:gap-24">
+            <motion.div {...sectionFade}>
+              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">How QSVA Works</h3>
+              <p className="text-muted-foreground mb-8 leading-relaxed">
+                QSVA converts a human decision into cryptographic proof bound to a single action
+                within an execution path. That proof:
+              </p>
+              <ul className="space-y-5">
+                {proofPoints.map((point, i) => (
+                  <motion.li
+                    key={point}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.3, delay: i * 0.08 }}
+                    className="flex items-center gap-4"
+                  >
+                    <span className="w-6 h-px bg-foreground flex-shrink-0" />
+                    <span className="text-sm font-medium text-foreground">{point}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            </motion.div>
+
+            <motion.div
+              {...sectionFade}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">What Agentic Systems Gain</h3>
+              <ul className="space-y-5">
+                {gains.map((gain, i) => (
+                  <motion.li
+                    key={gain}
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.3, delay: i * 0.06 }}
+                    className="flex items-start gap-4"
+                  >
+                    <span className="w-6 h-px bg-muted-foreground flex-shrink-0 mt-2.5" />
+                    <span className="text-sm text-muted-foreground leading-relaxed">{gain}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            </motion.div>
+          </div>
+
+          {/* Callout */}
+          <motion.div
+            {...sectionFade}
+            className="mt-20 border-l-2 border-foreground pl-8 py-2 max-w-3xl"
+          >
+            <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed italic">
+              "QSVA does not replace autonomy.
+              It defines the boundary where autonomy must stop."
+            </p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ─── Part 4: Extending Zero Trust ─── */}
+      <div className="py-20 md:py-28 bg-secondary">
+        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+          <motion.div {...sectionFade} className="max-w-3xl">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-px w-8 bg-foreground" />
+              <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Zero Trust Extended</span>
+            </div>
+            <h2 className="font-serif text-3xl md:text-4xl text-foreground mb-8">
+              Extending Zero Trust into Agentic Execution
+            </h2>
+            <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
+              <p>
+                Zero Trust removed implicit trust at access boundaries.
+              </p>
+              <p>
+                Agentic systems require the same principle at execution time.
+              </p>
+              <p>
+                QSVA ensures that as autonomous systems operate at machine speed, human authority
+                remains cryptographically enforced at the moments that matter.
+              </p>
+            </div>
+            <motion.p
+              {...sectionFade}
+              className="mt-10 text-foreground font-medium text-base md:text-lg border-t border-border pt-8"
+            >
+              QSVA is the execution‑time authorization architecture required for agentic systems to scale safely.
+            </motion.p>
+          </motion.div>
+        </div>
       </div>
     </section>
   );
