@@ -63,7 +63,7 @@ serve(async (req) => {
             Authorization: `Bearer ${resendKey}`,
           },
           body: JSON.stringify({
-            from: "QSVA Waitlist <onboarding@resend.dev>",
+            from: "QSVA Waitlist <waitlist@qsva.io>",
             to: [RECIPIENT],
             subject: `New Waitlist Signup: ${email.trim()}`,
             html: `
