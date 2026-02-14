@@ -36,7 +36,7 @@ const items = [
 
 const BuiltFor = () => {
   return (
-    <section id="built-for" className="py-20 md:py-28 relative">
+    <section id="built-for" className="py-20 md:py-28 bg-secondary relative">
       {/* Decorative vertical line */}
       <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
 
