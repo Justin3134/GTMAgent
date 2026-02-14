@@ -24,7 +24,7 @@ const Waitlist = () => {
   };
 
   return (
-    <section id="waitlist" className="py-24 md:py-32 relative overflow-hidden">
+    <section id="waitlist" className="py-20 md:py-28 relative overflow-hidden">
       {/* Subtle background texture */}
       <div className="absolute inset-0 opacity-[0.02]" style={{
         backgroundImage: `linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)`,

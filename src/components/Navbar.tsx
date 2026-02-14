@@ -34,13 +34,13 @@ const Navbar = () => {
         scrolled ? "bg-background/80 backdrop-blur-xl border-b border-border shadow-sm" : "bg-transparent"
       }`}
     >
-      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
           <img src={qsvaLogoBlack} alt="QSVA" className="h-9 w-auto" />
           <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
         </a>
 
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
             <button
               key={link.href}

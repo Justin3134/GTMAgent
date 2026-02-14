@@ -55,14 +55,14 @@ const members = [
 
 const Team = () => {
   return (
-    <section id="team" className="py-24 md:py-32 bg-secondary">
+    <section id="team" className="py-20 md:py-28 bg-secondary">
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="mb-16"
+          className="mb-12"
         >
           <div className="flex items-center gap-4 mb-4">
             <div className="h-px w-8 bg-foreground" />
@@ -74,7 +74,7 @@ const Team = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
           {members.map((m, i) => (
             <motion.div
               key={m.name}
@@ -84,7 +84,7 @@ const Team = () => {
               transition={{ duration: 0.5, delay: i * 0.07 }}
               className="group"
             >
-              <div className="aspect-[3/4] overflow-hidden rounded-lg bg-accent mb-5 relative">
+              <div className="aspect-[4/5] overflow-hidden rounded-lg bg-accent mb-4 relative">
                 <img
                   src={m.img}
                   alt={m.name}

@@ -21,21 +21,21 @@ const Hero = () => {
         background: 'radial-gradient(circle, hsl(var(--foreground)) 0%, transparent 70%)',
       }} />
 
-      <div className="max-w-6xl mx-auto px-6 lg:px-8 pt-32 pb-16 w-full">
-        <div className="grid lg:grid-cols-[1fr_auto] gap-16 items-center">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 pt-28 pb-12 w-full flex-1 flex items-center">
+        <div className="grid lg:grid-cols-[1fr_auto] gap-12 lg:gap-20 items-center w-full">
           <div className="max-w-2xl">
             <motion.div
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: "3rem" }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="h-px bg-foreground mb-8"
+              className="h-px bg-foreground mb-6"
             />
 
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground mb-6"
+              className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground mb-5"
             >
               Execution‑Time Authorization
             </motion.p>
@@ -44,7 +44,7 @@ const Hero = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-foreground mb-8"
+              className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-foreground mb-6"
             >
               Security Controls
               <br />
@@ -55,7 +55,7 @@ const Hero = () => {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="text-base md:text-lg text-muted-foreground leading-relaxed mb-10 max-w-lg"
+              className="text-base md:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg"
             >
               Cryptographically prove a real human approved a specific action at execution time
               across agentic AI, hardware systems, and high‑risk enterprise workflows.
@@ -105,10 +105,10 @@ const Hero = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1 }}
-        className="max-w-6xl mx-auto px-6 lg:px-8 w-full pb-24"
+        className="max-w-6xl mx-auto px-6 lg:px-8 w-full pb-16"
       >
-        <div className="border-t border-border pt-10">
-          <div className="grid grid-cols-3 gap-8">
+        <div className="border-t border-border pt-8">
+          <div className="grid grid-cols-3 gap-6 md:gap-12">
             {stats.map((stat, i) => (
               <motion.div
                 key={stat.label}

@@ -36,7 +36,7 @@ const items = [
 
 const BuiltFor = () => {
   return (
-    <section id="built-for" className="py-24 md:py-32 bg-secondary relative">
+    <section id="built-for" className="py-20 md:py-28 bg-secondary relative">
       {/* Decorative vertical line */}
       <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
 
@@ -46,7 +46,7 @@ const BuiltFor = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="mb-16"
+          className="mb-12"
         >
           <div className="flex items-center gap-4 mb-4">
             <div className="h-px w-8 bg-foreground" />
@@ -68,7 +68,7 @@ const BuiltFor = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.4, delay: i * 0.06 }}
-              className="bg-background p-8 lg:p-10 group hover:bg-accent/50 transition-all duration-500 relative"
+              className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative"
             >
               {/* Hover accent line */}
               <div className="absolute top-0 left-0 w-0 h-0.5 bg-foreground group-hover:w-full transition-all duration-500" />

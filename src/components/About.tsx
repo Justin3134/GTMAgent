@@ -18,7 +18,7 @@ const gains = [
 
 const About = () => {
   return (
-    <section id="about" className="py-24 md:py-32 relative">
+    <section id="about" className="py-20 md:py-28 relative">
       {/* Decorative vertical line */}
       <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
 
@@ -29,7 +29,7 @@ const About = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
-          className="max-w-3xl mb-20"
+          className="max-w-3xl mb-16"
         >
           <div className="flex items-center gap-4 mb-4">
             <div className="h-px w-8 bg-foreground" />
@@ -54,7 +54,7 @@ const About = () => {
         </motion.div>
 
         {/* Divider */}
-        <div className="h-px bg-border mb-20" />
+        <div className="h-px bg-border mb-16" />
 
         {/* Two columns */}
         <div className="grid md:grid-cols-2 gap-16 md:gap-24">
@@ -117,7 +117,7 @@ const About = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mt-24 border-l-2 border-foreground pl-8 py-2 max-w-3xl"
+          className="mt-20 border-l-2 border-foreground pl-8 py-2 max-w-3xl"
         >
           <p className="font-serif text-xl md:text-2xl text-foreground leading-relaxed italic">
             "QSVA does not replace autonomy.
