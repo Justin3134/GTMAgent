@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import qsvaLogoBlack from "@/assets/qsva-logo-black.png";
+import qsvaLogoIcon from "@/assets/qsva-logo-icon.png";
 
 type NavLink = { label: string; href: string; route?: string };
 
@@ -60,7 +60,7 @@ const Navbar = () => {
     >
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5" onClick={(e) => { e.preventDefault(); handleLogoClick(); }}>
-          <img src={qsvaLogoBlack} alt="QSVA" className="h-9 w-auto" />
+          <img src={qsvaLogoIcon} alt="QSVA" className="h-9 w-auto" />
           <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
         </a>
 
