@@ -84,12 +84,13 @@ const Team = () => {
               transition={{ duration: 0.5, delay: i * 0.07 }}
               className="group"
             >
-              <div className="aspect-[4/5] overflow-hidden rounded-lg bg-accent mb-4 relative">
+              <div className="aspect-[4/5] overflow-hidden rounded-sm bg-accent mb-4 relative">
                 <img
                   src={m.img}
                   alt={m.name}
                   className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-[1.02]"
                 />
+                <div className="absolute inset-0 ring-1 ring-inset ring-foreground/5 rounded-sm" />
               </div>
               <div className="flex items-start justify-between gap-2">
                 <div>

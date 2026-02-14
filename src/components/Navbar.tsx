@@ -61,7 +61,7 @@ const Navbar = () => {
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5" onClick={(e) => { e.preventDefault(); handleLogoClick(); }}>
           <img src={qsvaLogoIcon} alt="QSVA" className="h-9 w-auto" />
-          <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
+          <span className="text-lg font-semibold tracking-[0.12em] text-foreground">QSVA</span>
         </a>
 
         <div className="hidden md:flex items-center gap-8">
