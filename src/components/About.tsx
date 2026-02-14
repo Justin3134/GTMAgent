@@ -18,7 +18,10 @@ const gains = [
 
 const About = () => {
   return (
-    <section id="about" className="py-24 md:py-32">
+    <section id="about" className="py-24 md:py-32 relative">
+      {/* Decorative vertical line */}
+      <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
+
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         {/* Intro */}
         <motion.div
@@ -35,7 +38,7 @@ const About = () => {
           <h2 className="font-serif text-4xl md:text-5xl text-foreground mb-8">
             About QSVA
           </h2>
-          <div className="space-y-5 text-muted-foreground leading-relaxed">
+          <div className="space-y-5 text-muted-foreground leading-relaxed text-base md:text-lg">
             <p>
               Agentic systems don't just execute commands — they decide what actions to take.
               They initiate financial transfers, modify infrastructure, recover systems, and act
@@ -66,7 +69,7 @@ const About = () => {
               QSVA converts a human decision into cryptographic proof bound to a single action
               within an execution path. That proof:
             </p>
-            <ul className="space-y-4">
+            <ul className="space-y-5">
               {proofPoints.map((point, i) => (
                 <motion.li
                   key={point}
@@ -76,7 +79,7 @@ const About = () => {
                   transition={{ duration: 0.3, delay: i * 0.08 }}
                   className="flex items-center gap-4"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0" />
+                  <span className="w-6 h-px bg-foreground flex-shrink-0" />
                   <span className="text-sm font-medium text-foreground">{point}</span>
                 </motion.li>
               ))}
@@ -90,7 +93,7 @@ const About = () => {
             transition={{ duration: 0.5, delay: 0.1 }}
           >
             <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">What Systems Gain</h3>
-            <ul className="space-y-4">
+            <ul className="space-y-5">
               {gains.map((gain, i) => (
                 <motion.li
                   key={gain}
@@ -100,7 +103,7 @@ const About = () => {
                   transition={{ duration: 0.3, delay: i * 0.06 }}
                   className="flex items-start gap-4"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0 mt-2" />
+                  <span className="w-6 h-px bg-muted-foreground flex-shrink-0 mt-2.5" />
                   <span className="text-sm text-muted-foreground leading-relaxed">{gain}</span>
                 </motion.li>
               ))}

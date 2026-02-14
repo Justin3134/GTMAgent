@@ -36,7 +36,10 @@ const items = [
 
 const BuiltFor = () => {
   return (
-    <section id="built-for" className="py-24 md:py-32 bg-secondary">
+    <section id="built-for" className="py-24 md:py-32 bg-secondary relative">
+      {/* Decorative vertical line */}
+      <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
+
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -65,13 +68,16 @@ const BuiltFor = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.4, delay: i * 0.06 }}
-              className="bg-background p-8 lg:p-10 group hover:bg-accent/50 transition-colors duration-300"
+              className="bg-background p-8 lg:p-10 group hover:bg-accent/50 transition-all duration-500 relative"
             >
+              {/* Hover accent line */}
+              <div className="absolute top-0 left-0 w-0 h-0.5 bg-foreground group-hover:w-full transition-all duration-500" />
+
               <div className="flex items-start justify-between mb-5">
-                <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground">
+                <span className="text-xs font-medium tracking-widest uppercase text-muted-foreground/50">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <item.icon size={20} className="text-muted-foreground/40 group-hover:text-foreground/60 transition-colors duration-300" />
+                <item.icon size={20} className="text-muted-foreground/30 group-hover:text-foreground/70 transition-colors duration-500" />
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>

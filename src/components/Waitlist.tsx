@@ -31,6 +31,9 @@ const Waitlist = () => {
         backgroundSize: '40px 40px',
       }} />
 
+      {/* Decorative vertical line */}
+      <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
+
       <div className="max-w-6xl mx-auto px-6 lg:px-8 relative">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -84,7 +87,7 @@ const Waitlist = () => {
               </div>
               <button
                 type="submit"
-                className="h-12 px-7 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap"
+                className="h-12 px-7 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 whitespace-nowrap"
               >
                 Request Access
               </button>
