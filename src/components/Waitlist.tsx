@@ -1,26 +1,42 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 const Waitlist = () => {
   const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    const trimmed = email.trim();
-    if (!trimmed) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       setError("Please enter your email.");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setError("Please enter a valid email address.");
       return;
     }
 
-    setSubmitted(true);
+    setLoading(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("send-waitlist", {
+        body: { email: trimmedEmail, message: message.trim() || null },
+      });
+
+      if (fnError) throw fnError;
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Waitlist submission error:", err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,8 +87,8 @@ const Waitlist = () => {
               <p className="text-sm text-muted-foreground mt-1">We'll be in touch soon.</p>
             </motion.div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <div className="flex-1">
+            <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
+              <div>
                 <input
                   type="email"
                   value={email}
@@ -85,11 +101,22 @@ const Waitlist = () => {
                   <p className="text-xs text-destructive mt-1.5 text-left">{error}</p>
                 )}
               </div>
+
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Tell us about your use case (optional)"
+                rows={3}
+                maxLength={1000}
+                className="w-full px-4 py-3 rounded-md border border-input bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-shadow resize-none"
+              />
+
               <button
                 type="submit"
-                className="h-12 px-7 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 whitespace-nowrap"
+                disabled={loading}
+                className="w-full h-12 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Request Access
+                {loading ? "Submitting…" : "Request Access"}
               </button>
             </form>
           )}
