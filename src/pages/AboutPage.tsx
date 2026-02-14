@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ShieldCheck, Zap, Lock, Eye } from "lucide-react";
@@ -27,17 +27,41 @@ const failurePoints = [
   { text: "Errors scale into systemic failures", num: "03" },
 ];
 
-const sectionFade = {
-  initial: { opacity: 0, y: 20 } as const,
-  whileInView: { opacity: 1, y: 0 } as const,
-  viewport: { once: true, margin: "-60px" } as const,
-  transition: { duration: 0.6 },
-};
+function useScrollReveal() {
+  const refs = useRef<HTMLElement[]>([]);
+
+  const addRef = useCallback((el: HTMLElement | null) => {
+    if (el && !refs.current.includes(el)) {
+      refs.current.push(el);
+    }
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("about-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "-40px" }
+    );
+
+    refs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  return addRef;
+}
 
 const AboutPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const revealRef = useScrollReveal();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -110,7 +134,7 @@ const AboutPage = () => {
       <section className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-[280px_1fr] gap-12 lg:gap-20">
-            <motion.div {...sectionFade} className="lg:sticky lg:top-28 lg:self-start">
+            <div ref={revealRef} className="lg:sticky lg:top-28 lg:self-start about-fade">
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-px w-8 bg-foreground" />
                 <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">01</span>
@@ -118,9 +142,9 @@ const AboutPage = () => {
               <h2 className="font-serif text-3xl md:text-4xl text-foreground">
                 The Problem
               </h2>
-            </motion.div>
+            </div>
 
-            <motion.div {...sectionFade} className="max-w-2xl">
+            <div ref={revealRef} className="max-w-2xl about-fade" style={{ "--about-delay": "0.1s" } as React.CSSProperties}>
               <div className="space-y-6 text-muted-foreground leading-relaxed text-base md:text-lg">
                 <p>
                   Agentic systems don't just execute commands — they decide what actions to take.
@@ -129,12 +153,9 @@ const AboutPage = () => {
                   They initiate financial transfers, modify infrastructure, recover systems, spawn workflows,
                   and act across distributed environments without continuous human supervision.
                 </p>
-                <motion.p
-                  {...sectionFade}
-                  className="text-foreground font-medium text-xl md:text-2xl font-serif leading-snug py-4 border-l-2 border-foreground pl-6"
-                >
+                <p className="text-foreground font-medium text-xl md:text-2xl font-serif leading-snug py-4 border-l-2 border-foreground pl-6">
                   This breaks the assumptions behind modern security.
-                </motion.p>
+                </p>
                 <p>
                   IAM, MFA, and device trust were designed for human‑initiated sessions, not for systems
                   that generate intent and execute actions autonomously.
@@ -145,7 +166,7 @@ const AboutPage = () => {
                   <em className="text-foreground not-italic font-medium">who approved this specific action at the moment it executed</em>.
                 </p>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -155,7 +176,7 @@ const AboutPage = () => {
         <div className="absolute top-0 left-0 right-0 h-px bg-border" />
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-[280px_1fr] gap-12 lg:gap-20">
-            <motion.div {...sectionFade} className="lg:sticky lg:top-28 lg:self-start">
+            <div ref={revealRef} className="lg:sticky lg:top-28 lg:self-start about-fade">
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-px w-8 bg-foreground" />
                 <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">02</span>
@@ -163,9 +184,9 @@ const AboutPage = () => {
               <h2 className="font-serif text-3xl md:text-4xl text-foreground">
                 The Gap
               </h2>
-            </motion.div>
+            </div>
 
-            <motion.div {...sectionFade} className="max-w-2xl">
+            <div ref={revealRef} className="max-w-2xl about-fade" style={{ "--about-delay": "0.1s" } as React.CSSProperties}>
               <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-8">
                 The Missing Control in Agentic Execution
               </h3>
@@ -185,29 +206,23 @@ const AboutPage = () => {
                 For agentic systems, this gap is existential:
               </p>
 
-              <div className="grid sm:grid-cols-3 gap-px bg-border rounded-lg overflow-hidden mb-10">
+              <div ref={revealRef} className="grid sm:grid-cols-3 gap-px bg-border rounded-lg overflow-hidden mb-10 about-fade-grid">
                 {failurePoints.map((point, i) => (
-                  <motion.div
+                  <div
                     key={point.text}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: i * 0.1 }}
-                    className="bg-background p-6 text-center"
+                    className="bg-background p-6 text-center about-fade-grid-item"
+                    style={{ "--card-index": i } as React.CSSProperties}
                   >
                     <span className="text-xs font-medium tracking-widest text-destructive/60 block mb-2">{point.num}</span>
                     <p className="text-sm font-medium text-foreground">{point.text}</p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
-              <motion.p
-                {...sectionFade}
-                className="text-foreground font-medium text-base md:text-lg"
-              >
+              <p className="text-foreground font-medium text-base md:text-lg">
                 QSVA exists to provide the control agentic systems require.
-              </motion.p>
-            </motion.div>
+              </p>
+            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
@@ -217,7 +232,7 @@ const AboutPage = () => {
       <section className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-[280px_1fr] gap-12 lg:gap-20 mb-20">
-            <motion.div {...sectionFade} className="lg:sticky lg:top-28 lg:self-start">
+            <div ref={revealRef} className="lg:sticky lg:top-28 lg:self-start about-fade">
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-px w-8 bg-foreground" />
                 <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">03</span>
@@ -225,9 +240,9 @@ const AboutPage = () => {
               <h2 className="font-serif text-3xl md:text-4xl text-foreground">
                 A New Category
               </h2>
-            </motion.div>
+            </div>
 
-            <motion.div {...sectionFade} className="max-w-2xl">
+            <div ref={revealRef} className="max-w-2xl about-fade" style={{ "--about-delay": "0.1s" } as React.CSSProperties}>
               <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-8">
                 Execution‑Time Trust
               </h3>
@@ -244,25 +259,22 @@ const AboutPage = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-px bg-border rounded-lg overflow-hidden max-w-sm mb-10">
+              <div ref={revealRef} className="grid grid-cols-2 gap-px bg-border rounded-lg overflow-hidden max-w-sm mb-10 about-fade-grid">
                 {["Verified in real time", "Auditable after execution"].map((item, i) => (
-                  <motion.div
+                  <div
                     key={item}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: i * 0.1 }}
-                    className="bg-secondary p-5"
+                    className="bg-secondary p-5 about-fade-grid-item"
+                    style={{ "--card-index": i } as React.CSSProperties}
                   >
                     <p className="text-sm font-medium text-foreground">{item}</p>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
 
               <p className="text-muted-foreground text-base md:text-lg leading-relaxed">
                 This enables agentic systems to act autonomously until a boundary that requires human authority is reached.
               </p>
-            </motion.div>
+            </div>
           </div>
 
           {/* Divider */}
@@ -270,7 +282,7 @@ const AboutPage = () => {
 
           {/* Two columns: How + What */}
           <div className="grid md:grid-cols-2 gap-16 md:gap-20">
-            <motion.div {...sectionFade}>
+            <div ref={revealRef} className="about-fade">
               <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">How QSVA Works</h3>
               <p className="text-muted-foreground mb-8 leading-relaxed">
                 QSVA converts a human decision into cryptographic proof bound to a single action
@@ -278,49 +290,35 @@ const AboutPage = () => {
               </p>
               <div className="space-y-4">
                 {proofPoints.map((point, i) => (
-                  <motion.div
+                  <div
                     key={point.text}
-                    initial={{ opacity: 0, x: -15 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4, delay: i * 0.1 }}
                     className="flex items-center gap-4 p-4 rounded-lg border border-border bg-secondary/50 hover:bg-secondary transition-colors duration-300"
                   >
                     <point.icon size={18} className="text-foreground/70 flex-shrink-0" />
                     <span className="text-sm font-medium text-foreground">{point.text}</span>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              {...sectionFade}
-              transition={{ duration: 0.6, delay: 0.15 }}
-            >
+            <div ref={revealRef} className="about-fade" style={{ "--about-delay": "0.15s" } as React.CSSProperties}>
               <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-5">What Agentic Systems Gain</h3>
               <ul className="space-y-5">
-                {gains.map((gain, i) => (
-                  <motion.li
+                {gains.map((gain) => (
+                  <li
                     key={gain}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.3, delay: i * 0.06 }}
                     className="flex items-start gap-4"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-foreground flex-shrink-0 mt-2" />
                     <span className="text-sm text-muted-foreground leading-relaxed">{gain}</span>
-                  </motion.li>
+                  </li>
                 ))}
               </ul>
-            </motion.div>
+            </div>
           </div>
 
           {/* Callout */}
-          <motion.div
-            {...sectionFade}
-            className="mt-20 max-w-3xl mx-auto text-center py-16 px-8"
-          >
+          <div ref={revealRef} className="mt-20 max-w-3xl mx-auto text-center py-16 px-8 about-fade">
             <div className="flex justify-center mb-6">
               <div className="h-px w-12 bg-foreground" />
             </div>
@@ -332,7 +330,7 @@ const AboutPage = () => {
             <div className="flex justify-center mt-6">
               <div className="h-px w-12 bg-foreground" />
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -341,7 +339,7 @@ const AboutPage = () => {
         <div className="absolute top-0 left-0 right-0 h-px bg-border" />
         <div className="max-w-6xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-[280px_1fr] gap-12 lg:gap-20">
-            <motion.div {...sectionFade} className="lg:sticky lg:top-28 lg:self-start">
+            <div ref={revealRef} className="lg:sticky lg:top-28 lg:self-start about-fade">
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-px w-8 bg-foreground" />
                 <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">04</span>
@@ -349,9 +347,9 @@ const AboutPage = () => {
               <h2 className="font-serif text-3xl md:text-4xl text-foreground">
                 Zero Trust Extended
               </h2>
-            </motion.div>
+            </div>
 
-            <motion.div {...sectionFade} className="max-w-2xl">
+            <div ref={revealRef} className="max-w-2xl about-fade" style={{ "--about-delay": "0.1s" } as React.CSSProperties}>
               <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-8">
                 Extending Zero Trust into Agentic Execution
               </h3>
@@ -368,12 +366,9 @@ const AboutPage = () => {
                 </p>
               </div>
 
-              <motion.p
-                {...sectionFade}
-                className="mt-10 text-foreground font-semibold text-lg md:text-xl border-t border-border pt-8 leading-relaxed"
-              >
+              <p className="mt-10 text-foreground font-semibold text-lg md:text-xl border-t border-border pt-8 leading-relaxed">
                 QSVA is the execution‑time authorization architecture required for agentic systems to scale safely.
-              </motion.p>
+              </p>
 
               <div className="mt-12 flex flex-col sm:flex-row gap-4">
                 <a
@@ -394,7 +389,7 @@ const AboutPage = () => {
                   ← Back to Home
                 </Link>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>

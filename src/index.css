@@ -87,3 +87,28 @@
   opacity: 1;
   transform: translateY(0);
 }
+
+/* About page — CSS-only scroll reveal */
+.about-fade {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  transition-delay: var(--about-delay, 0s);
+}
+
+.about-fade.about-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.about-fade-grid-item {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition-delay: calc(var(--card-index) * 0.1s);
+}
+
+.about-fade-grid.about-visible .about-fade-grid-item {
+  opacity: 1;
+  transform: translateY(0);
+}
