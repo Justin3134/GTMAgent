@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import qsvaLogoBlack from "@/assets/qsva-logo-black.png";
 
-const navLinks = [
+type NavLink = { label: string; href: string; route?: string };
+
+const navLinks: NavLink[] = [
   { label: "Built For", href: "#built-for" },
-  { label: "About", href: "#about" },
+  { label: "About", href: "#about", route: "/about" },
   { label: "Team", href: "#team" },
   { label: "Waitlist", href: "#waitlist" },
 ];
@@ -13,6 +16,8 @@ const navLinks = [
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -20,9 +25,28 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleClick = (href: string) => {
+  const handleClick = (link: NavLink) => {
     setMobileOpen(false);
-    document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+    if (link.route) {
+      navigate(link.route);
+      return;
+    }
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } else {
+      document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleLogoClick = () => {
+    if (location.pathname !== "/") {
+      navigate("/");
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (
@@ -35,7 +59,7 @@ const Navbar = () => {
       }`}
     >
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
-        <a href="#" className="flex items-center gap-2.5" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+        <a href="#" className="flex items-center gap-2.5" onClick={(e) => { e.preventDefault(); handleLogoClick(); }}>
           <img src={qsvaLogoBlack} alt="QSVA" className="h-9 w-auto" />
           <span className="text-lg font-semibold tracking-wide text-foreground">QSVA</span>
         </a>
@@ -44,7 +68,7 @@ const Navbar = () => {
           {navLinks.map((link) => (
             <button
               key={link.href}
-              onClick={() => handleClick(link.href)}
+              onClick={() => handleClick(link)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-300 relative after:absolute after:bottom-[-2px] after:left-0 after:w-0 after:h-px after:bg-foreground after:transition-all after:duration-300 hover:after:w-full"
             >
               {link.label}
@@ -75,7 +99,7 @@ const Navbar = () => {
           {navLinks.map((link) => (
             <button
               key={link.href}
-              onClick={() => handleClick(link.href)}
+              onClick={() => handleClick(link)}
               className="block w-full text-left text-sm text-muted-foreground hover:text-foreground py-2"
             >
               {link.label}
