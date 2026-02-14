@@ -259,14 +259,20 @@ const AboutPage = () => {
                 </p>
               </div>
 
-              <div ref={revealRef} className="grid grid-cols-2 gap-px bg-border rounded-lg overflow-hidden max-w-sm mb-10 about-fade-grid">
-                {["Verified in real time", "Auditable after execution"].map((item, i) => (
+              <div ref={revealRef} className="flex gap-6 max-w-lg mb-10 about-fade-grid">
+                {[
+                  { label: "Verified in real time", num: "01", icon: "◆" },
+                  { label: "Auditable after execution", num: "02", icon: "◆" },
+                ].map((item, i) => (
                   <div
-                    key={item}
-                    className="bg-secondary p-5 about-fade-grid-item"
+                    key={item.label}
+                    className="flex-1 relative p-6 border border-border rounded-lg bg-background about-fade-grid-item group hover:border-foreground/20 transition-colors duration-500"
                     style={{ "--card-index": i } as React.CSSProperties}
                   >
-                    <p className="text-sm font-medium text-foreground">{item}</p>
+                    <div className="absolute top-0 left-6 -translate-y-1/2 bg-background px-2">
+                      <span className="text-[10px] font-medium tracking-[0.2em] uppercase text-muted-foreground/60">{item.num}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{item.label}</p>
                   </div>
                 ))}
               </div>
