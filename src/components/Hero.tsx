@@ -44,11 +44,11 @@ const Hero = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.05] text-foreground mb-6"
+              className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-foreground mb-6"
             >
               Security Controls
               <br />
-              <span className="text-muted-foreground/50 italic">For Agents</span>
+              <span className="text-muted-foreground/60">For Agents</span>
             </motion.h1>
 
             <motion.p
@@ -117,9 +117,8 @@ const Hero = () => {
                 transition={{ duration: 0.4, delay: 1.2 + i * 0.15 }}
                 className="text-center lg:text-left"
               >
-                <p className="text-xs text-muted-foreground/40 mb-1 font-mono-label">{String(i + 1).padStart(2, "0")}</p>
                 <p className="text-sm md:text-base font-semibold text-foreground tracking-tight">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 tracking-wide">{stat.label}</p>
+                <p className="text-xs text-muted-foreground mt-1 tracking-wide">{stat.label}</p>
               </motion.div>
             ))}
           </div>

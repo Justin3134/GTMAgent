@@ -48,12 +48,6 @@
     /* Custom tokens */
     --surface: 220 10% 97%;
     --highlight: 210 100% 52%;
-
-    /* Inverted for dark sections */
-    --inverted-bg: 220 20% 8%;
-    --inverted-fg: 220 10% 92%;
-    --inverted-muted: 220 10% 55%;
-    --inverted-border: 220 15% 20%;
   }
 }
 
@@ -62,33 +56,8 @@
     @apply border-border;
   }
 
-  html {
-    scroll-behavior: smooth;
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'DM Sans', sans-serif;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  ::selection {
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
-  }
-
-  /* Refined serif headings */
-  .font-serif {
-    font-feature-settings: 'liga' 1, 'kern' 1;
-    letter-spacing: -0.01em;
-  }
-
-  /* Monospaced accent for labels */
-  .font-mono-label {
-    font-family: 'DM Sans', sans-serif;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.08em;
   }
 }
