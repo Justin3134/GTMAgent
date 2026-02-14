@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import { Shield, Cpu, Landmark, Building2, Lock, HeartPulse } from "lucide-react";
 
 const items = [
@@ -34,41 +34,34 @@ const items = [
   },
 ];
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.07,
-    },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 14 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-    },
-  },
-};
-
 const BuiltFor = () => {
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          grid.classList.add("built-for-visible");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section id="built-for" className="py-20 md:py-28 bg-secondary relative">
       {/* Decorative vertical line */}
       <div className="absolute top-0 left-1/2 w-px h-24 bg-gradient-to-b from-transparent to-border hidden md:block" />
 
       <div className="max-w-6xl mx-auto px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-12"
-        >
+        <div className="mb-12">
           <div className="flex items-center gap-4 mb-4">
             <div className="h-px w-8 bg-foreground" />
             <span className="text-xs font-medium tracking-[0.2em] uppercase text-muted-foreground">Industries</span>
@@ -80,20 +73,17 @@ const BuiltFor = () => {
             QSVA is built for teams deploying agentic systems where mistakes are irreversible,
             including:
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-lg overflow-hidden"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.15 }}
+        <div
+          ref={gridRef}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border rounded-lg overflow-hidden built-for-grid"
         >
           {items.map((item, i) => (
-            <motion.div
+            <div
               key={item.title}
-              variants={cardVariants}
-              className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative"
+              className="bg-background p-7 lg:p-9 group hover:bg-accent/50 transition-all duration-500 relative built-for-card"
+              style={{ "--card-index": i } as React.CSSProperties}
             >
               {/* Hover accent line */}
               <div className="absolute top-0 left-0 w-0 h-0.5 bg-foreground group-hover:w-full transition-all duration-500" />
@@ -106,17 +96,11 @@ const BuiltFor = () => {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-12 text-center"
-        >
+        <div className="mt-12 text-center">
           <a
             href="https://calendly.com/ben-qsva/30min"
             target="_blank"
@@ -125,7 +109,7 @@ const BuiltFor = () => {
           >
             Talk to the QSVA Team →
           </a>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

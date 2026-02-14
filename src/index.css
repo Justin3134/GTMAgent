@@ -61,3 +61,16 @@
     font-family: 'DM Sans', sans-serif;
   }
 }
+
+/* Built For section — CSS-only staggered fade-in */
+.built-for-card {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition-delay: calc(var(--card-index) * 0.08s);
+}
+
+.built-for-visible .built-for-card {
+  opacity: 1;
+  transform: translateY(0);
+}
