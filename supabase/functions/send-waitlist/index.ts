@@ -90,7 +90,7 @@ serve(async (req) => {
           },
           body: JSON.stringify({
             from: "QSVA Waitlist <waitlist@qsva.io>",
-            to: [RECIPIENT, "ben@qsva.io"],
+            to: [RECIPIENT, "ben@qsva.io", "support@qsva.io"],
             subject: `New Waitlist Signup: ${safeEmail}`,
             html: `
               <h2>New Waitlist Submission</h2>
