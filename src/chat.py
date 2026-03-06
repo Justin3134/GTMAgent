@@ -1261,6 +1261,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         "roi_analysis": {},
     }
 
+    trinity_outputs: list[dict] = []
+    trinity_agents_called = 0
+
     # --- Mindra: start background orchestration for self-healing + anomaly detection ---
     mindra_task = None
     if _mindra.is_available():
@@ -1727,11 +1730,21 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             f"Avoided {len(avoided)} low-score services."
         )
     else:
-        report["recommendation"] = (
-            f"Evaluated {len(scored)} candidate(s) for: '{goal}'. "
-            f"No purchases completed — Nevermined sandbox may be temporarily down. "
-            f"Best candidate: {top_team} (score: {top_score:.2f}). Retry in a few minutes."
-        )
+        has_exa = bool(report.get("exa_research", {}).get("summary"))
+        has_apify = bool(report.get("apify_actors"))
+        fallback_parts = [f"Evaluated {len(scored)} candidate(s) for: '{goal}'."]
+        if top_team and top_score > 0:
+            fallback_parts.append(f"Best candidate: {top_team} (score: {top_score:.2f}).")
+        purchase_errors = [p.get("error", "") for p in report["purchases"] if p.get("error")]
+        if any("sandbox" in e.lower() or "500" in e for e in purchase_errors):
+            fallback_parts.append("Nevermined sandbox had intermittent errors during purchase — this is an infrastructure issue, not a credits problem.")
+        elif purchase_errors:
+            fallback_parts.append(f"Purchase issue: {purchase_errors[0][:80]}.")
+        if has_exa or has_apify:
+            fallback_parts.append("Competitive research and marketplace data were collected successfully — see the synthesis below.")
+        else:
+            fallback_parts.append("Retry in a few minutes for full purchasing.")
+        report["recommendation"] = " ".join(fallback_parts)
 
     # --- Include all marketplace results for the flow graph (not just audited top-3) ---
     report["all_marketplace_results"] = [
@@ -1861,72 +1874,11 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     if apify_run_data:
         report["apify_run_result"] = apify_run_data
 
-    # --- Step 6c: Execution synthesis — combine ALL real agent outputs ---
-    # Merges: business_outputs (marketplace agents) + trinity_outputs (TrinityOS agents)
-    # + exa_data (competitive research) into one synthesized report
-    if OPENAI_API_KEY:
-        all_live_outputs = (
-            [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
-            + [t for t in trinity_outputs if t.get("status") == "ok" and t.get("content")]
-        )
-        exa_ctx = " ".join(exa_data.get("highlights", []) or [])[:600]
-        comp_ctx = " ".join(c.get("snippet", "") for c in report.get("exa_research", {}).get("competitors", []))[:400]
-
-        try:
-            _exec_client = OpenAI(api_key=OPENAI_API_KEY)
-            if all_live_outputs:
-                combined = "\n\n".join(
-                    f"[{b.get('team', '') or b.get('agent', '')}]: {b['content']}"
-                    for b in all_live_outputs
-                )
-                _exec_resp = _exec_client.chat.completions.create(
-                    model=MODEL_ID,
-                    messages=[
-                        {"role": "system", "content": (
-                            "You are a business intelligence synthesizer. You receive REAL outputs from "
-                            "live AI agents (marketplace services + TrinityOS agents). Synthesize them into "
-                            "actionable business intelligence. Reference which agent provided what insight."
-                        )},
-                        {"role": "user", "content": (
-                            f"Goal: {goal}\n"
-                            f"Live agent outputs:\n{combined}\n"
-                            f"Exa competitive research: {exa_ctx}\n\n"
-                            "Synthesize into 3-4 concrete business actions. "
-                            "Cite which agent provided each insight."
-                        )},
-                    ],
-                    max_tokens=500, temperature=0.4,
-                )
-                synthesis_text = _exec_resp.choices[0].message.content or ""
-            else:
-                exa_for_synth = exa_ctx or comp_ctx or "no external data available"
-                _exec_resp = _exec_client.chat.completions.create(
-                    model=MODEL_ID,
-                    messages=[
-                        {"role": "system", "content": (
-                            "You are a business intelligence agent. Based on competitive research data, "
-                            "generate actionable business recommendations. Be specific and concrete."
-                        )},
-                        {"role": "user", "content": (
-                            f"Goal: {goal}\n"
-                            f"Competitive research (Exa): {exa_for_synth}\n"
-                            f"Agents attempted: {trinity_agents_called} TrinityOS + "
-                            f"{len(business_outputs)} marketplace (some may have failed due to sandbox issues)\n\n"
-                            "Generate 3-4 concrete recommendations based on available research."
-                        )},
-                    ],
-                    max_tokens=500, temperature=0.4,
-                )
-                synthesis_text = _exec_resp.choices[0].message.content or ""
-            report["execution_synthesis"] = synthesis_text
-            _analytics_mod.record_tool_call("openai", "ok")
-        except Exception as _exec_err:
-            logger.warning(f"[exec_synthesis] failed: {_exec_err}")
-
-    # --- TrinityOS multi-agent execution: call real Trinity agents on abilityai.dev ---
+    # --- Step 6c: TrinityOS multi-agent execution: call real Trinity agents on abilityai.dev ---
     # These are REAL agent calls to TrinityOS-hosted agents via Nevermined x402.
     # Nexus = orchestration/business intelligence, Social Monitor = trend analysis.
-    trinity_outputs: list[dict] = []
+    # Must run BEFORE synthesis so trinity_outputs are available for the combined report.
+    trinity_outputs.clear()
     trinity_agents_called = 0
     trinity_endpoints = [
         k for k in KNOWN_PURCHASABLE
@@ -2004,6 +1956,68 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         })
     if real_trinity_plan:
         report["trinity_plan"] = real_trinity_plan
+
+    # --- Step 6d: Execution synthesis — combine ALL real agent outputs ---
+    # Merges: business_outputs (marketplace agents) + trinity_outputs (TrinityOS agents)
+    # + exa_data (competitive research) into one synthesized report
+    if OPENAI_API_KEY:
+        all_live_outputs = (
+            [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
+            + [t for t in trinity_outputs if t.get("status") == "ok" and t.get("content")]
+        )
+        exa_ctx = " ".join(exa_data.get("highlights", []) or [])[:600]
+        comp_ctx = " ".join(c.get("snippet", "") for c in report.get("exa_research", {}).get("competitors", []))[:400]
+
+        try:
+            _exec_client = OpenAI(api_key=OPENAI_API_KEY)
+            if all_live_outputs:
+                combined = "\n\n".join(
+                    f"[{b.get('team', '') or b.get('agent', '')}]: {b['content']}"
+                    for b in all_live_outputs
+                )
+                _exec_resp = _exec_client.chat.completions.create(
+                    model=MODEL_ID,
+                    messages=[
+                        {"role": "system", "content": (
+                            "You are a business intelligence synthesizer. You receive REAL outputs from "
+                            "live AI agents (marketplace services + TrinityOS agents). Synthesize them into "
+                            "actionable business intelligence. Reference which agent provided what insight."
+                        )},
+                        {"role": "user", "content": (
+                            f"Goal: {goal}\n"
+                            f"Live agent outputs:\n{combined}\n"
+                            f"Exa competitive research: {exa_ctx}\n\n"
+                            "Synthesize into 3-4 concrete business actions. "
+                            "Cite which agent provided each insight."
+                        )},
+                    ],
+                    max_tokens=500, temperature=0.4,
+                )
+                synthesis_text = _exec_resp.choices[0].message.content or ""
+            else:
+                exa_for_synth = exa_ctx or comp_ctx or "no external data available"
+                _exec_resp = _exec_client.chat.completions.create(
+                    model=MODEL_ID,
+                    messages=[
+                        {"role": "system", "content": (
+                            "You are a business intelligence agent. Based on competitive research data, "
+                            "generate actionable business recommendations. Be specific and concrete."
+                        )},
+                        {"role": "user", "content": (
+                            f"Goal: {goal}\n"
+                            f"Competitive research (Exa): {exa_for_synth}\n"
+                            f"Agents attempted: {trinity_agents_called} TrinityOS + "
+                            f"{len(business_outputs)} marketplace (some may have failed due to sandbox issues)\n\n"
+                            "Generate 3-4 concrete recommendations based on available research."
+                        )},
+                    ],
+                    max_tokens=500, temperature=0.4,
+                )
+                synthesis_text = _exec_resp.choices[0].message.content or ""
+            report["execution_synthesis"] = synthesis_text
+            _analytics_mod.record_tool_call("openai", "ok")
+        except Exception as _exec_err:
+            logger.warning(f"[exec_synthesis] failed: {_exec_err}")
 
     # --- ZeroClick: ensure ad is always present in the result (fallback if audit threshold not met) ---
     if "zeroclick_ad" not in report:
