@@ -293,7 +293,61 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 /* Flow section dividers with arrows */
 .flow-arrow { text-align: center; color: var(--dim2); font-size: 11px; margin: -14px 0 14px; letter-spacing: 0.1em; }
 
-/* Business Execution Results */
+/* ── Business Dashboard ── */
+.biz-header {
+  border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px;
+}
+.biz-goal { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+.biz-meta { font-size: 10px; color: var(--dim); display: flex; gap: 16px; }
+.biz-meta span { display: flex; align-items: center; gap: 4px; }
+
+.biz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media(max-width:700px) { .biz-grid { grid-template-columns: 1fr; } }
+
+.biz-agent-card {
+  border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+  background: #060606; position: relative; overflow: hidden;
+}
+.biz-agent-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.biz-agent-card.cornelius::before { background: #334499; }
+.biz-agent-card.ruby::before      { background: #993344; }
+.biz-agent-card.outbound::before  { background: #449933; }
+.biz-agent-card.webmaster::before { background: #996633; }
+
+.biz-agent-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+.biz-agent-role { font-size: 9px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.biz-agent-output {
+  font-size: 11px; color: #ccc; line-height: 1.65; white-space: pre-wrap;
+  border-left: 2px solid var(--border); padding-left: 10px;
+}
+.biz-agent-output.loading { color: var(--dim2); font-style: italic; }
+.biz-agent-output strong { color: var(--fg); font-weight: 500; }
+.biz-agent-status { margin-top: 10px; font-size: 9px; display: flex; align-items: center; gap: 5px; }
+
+.biz-txns { margin-bottom: 20px; }
+.biz-txn-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+  border: 1px solid #1a2a1a; border-radius: 5px; margin-bottom: 6px;
+  background: #030a03; font-size: 10px;
+}
+.biz-txn-team { font-weight: 500; flex: 1; }
+.biz-txn-hash { font-family: monospace; color: var(--dim2); font-size: 9px; }
+.biz-txn-badge { font-size: 8px; padding: 2px 6px; border-radius: 2px; background: #0d2a0d; color: var(--green); }
+
+.biz-next { border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 20px; }
+.biz-next-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 10px; }
+.biz-next-action {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;
+  cursor: pointer; font-size: 11px; background: transparent; color: var(--fg);
+  font-family: inherit; width: 100%; text-align: left; transition: background 0.15s;
+}
+.biz-next-action:hover { background: #0a0a0a; }
+.biz-next-action:last-child { margin-bottom: 0; }
+
+/* Business Execution Results (in Flow) */
 .exec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .exec-card {
   border: 1px solid #1a2a1a; border-radius: 6px; padding: 14px 16px;
@@ -354,6 +408,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div style="display:flex;gap:4px">
         <button id="btn-chat" onclick="showView('chat')" style="font-size:10px;font-family:inherit;background:var(--fg);border:1px solid var(--fg);color:var(--bg);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Chat</button>
         <button id="btn-flow" onclick="showView('flow')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--dim2);color:var(--dim);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Flow</button>
+        <button id="btn-biz" onclick="showView('biz')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--dim2);color:var(--dim);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Business</button>
       </div>
     </div>
   </header>
@@ -369,6 +424,13 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       </div>
       <div id="flow-canvas" style="position:relative;min-height:500px;font-size:11px">
         <div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>
+      </div>
+    </div>
+
+    <!-- Business Dashboard View -->
+    <div id="view-biz" style="display:none;position:absolute;inset:0;overflow-y:auto;padding:24px 32px;background:var(--bg)">
+      <div id="biz-canvas">
+        <div style="color:var(--dim2);padding:40px 0;text-align:center">Run a business strategy in Chat first.<br><br><span style="font-size:10px">Try: "I want to build a marketing agency"</span></div>
       </div>
     </div>
 
@@ -440,21 +502,33 @@ let sending = false;
 let lastStrategyData = null; // store last strategy result for flow view
 
 function showView(v) {
-  const chat = document.getElementById('view-chat');
-  const flow = document.getElementById('view-flow');
+  const chat  = document.getElementById('view-chat');
+  const flow  = document.getElementById('view-flow');
+  const biz   = document.getElementById('view-biz');
   const btnChat = document.getElementById('btn-chat');
   const btnFlow = document.getElementById('btn-flow');
+  const btnBiz  = document.getElementById('btn-biz');
+  const activeStyle = {background:'var(--fg)', color:'var(--bg)', borderColor:'var(--fg)'};
+  const inactiveStyle = {background:'transparent', color:'var(--dim)', borderColor:'var(--dim2)'};
+
+  function applyStyle(btn, active) {
+    btn.style.background   = active ? 'var(--fg)' : 'transparent';
+    btn.style.color        = active ? 'var(--bg)' : 'var(--dim)';
+    btn.style.borderColor  = active ? 'var(--fg)' : 'var(--dim2)';
+  }
+
+  // Hide all
+  chat.style.display = 'none';
+  flow.style.display = 'none';
+  biz.style.display  = 'none';
+  applyStyle(btnChat, false);
+  applyStyle(btnFlow, false);
+  if (btnBiz) applyStyle(btnBiz, false);
+
   if (v === 'flow') {
-    chat.style.display = 'none';
     flow.style.display = 'block';
     flow.style.zIndex = '1';
-    btnFlow.style.background = 'var(--fg)';
-    btnFlow.style.color = 'var(--bg)';
-    btnFlow.style.borderColor = 'var(--fg)';
-    btnChat.style.background = 'transparent';
-    btnChat.style.color = 'var(--dim)';
-    btnChat.style.borderColor = 'var(--dim2)';
-    // Refresh key status then render
+    applyStyle(btnFlow, true);
     _loadKeyStatus().then(() => {
       try { renderFlowView(lastStrategyData); }
       catch(err) {
@@ -462,15 +536,17 @@ function showView(v) {
         if (cv) cv.innerHTML = '<div style="color:var(--red);padding:20px">Flow render error: ' + err.message + '</div>';
       }
     });
+  } else if (v === 'biz') {
+    biz.style.display = 'block';
+    if (btnBiz) applyStyle(btnBiz, true);
+    try { renderBizDashboard(lastStrategyData); }
+    catch(err) {
+      const cv = document.getElementById('biz-canvas');
+      if (cv) cv.innerHTML = '<div style="color:var(--red);padding:20px">Biz render error: ' + err.message + '</div>';
+    }
   } else {
-    flow.style.display = 'none';
     chat.style.display = 'flex';
-    btnChat.style.background = 'var(--fg)';
-    btnChat.style.color = 'var(--bg)';
-    btnChat.style.borderColor = 'var(--fg)';
-    btnFlow.style.background = 'transparent';
-    btnFlow.style.color = 'var(--dim)';
-    btnFlow.style.borderColor = 'var(--dim2)';
+    applyStyle(btnChat, true);
   }
 }
 
@@ -821,6 +897,132 @@ function renderFlowView(data) {
   canvas.querySelectorAll('[data-trinity-idx]').forEach(card => {
     card.addEventListener('click', () => openTrinityPanel(parseInt(card.dataset.trinityIdx)));
   });
+}
+
+// ── Business Dashboard ────────────────────────────────────────────────────────
+function renderBizDashboard(data) {
+  const canvas = document.getElementById('biz-canvas');
+  if (!data) {
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat first.<br><br><span style="font-size:10px">Try: "I want to build a marketing agency"</span></div>';
+    return;
+  }
+
+  const goal = data.goal || '';
+  const trinityPlan = data.trinity_plan || [];
+  const purchases = (data.purchases || []).filter(p => p.purchased);
+  const execSynth = data.execution_synthesis || '';
+  const roi = data.roi_analysis || {};
+  const bizBrief = data.business_brief || {};
+  const tmplColors = {cornelius:'#334499', ruby:'#993344', outbound:'#449933', webmaster:'#996633'};
+
+  let html = '';
+
+  // Header
+  html += '<div class="biz-header">';
+  html += '<div class="biz-goal">' + e(goal) + '</div>';
+  html += '<div class="biz-meta">';
+  html += '<span><span class="dot-pulse" style="width:6px;height:6px"></span> Business Active</span>';
+  if (purchases.length) html += '<span style="color:var(--green)">' + purchases.length + ' agent(s) purchased</span>';
+  if (roi.credits_spent) html += '<span>' + roi.credits_spent + ' credits spent</span>';
+  if (roi.teams_purchased_from) html += '<span>Teams: ' + roi.teams_purchased_from.map(e).join(', ') + '</span>';
+  html += '</div>';
+  html += '</div>';
+
+  // Transactions row
+  if (purchases.length > 0) {
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">Nevermined Transactions — Verified On-Chain</div>';
+    html += '<div class="biz-txns">';
+    purchases.forEach(p => {
+      const tx = (p.tx_hash||'').substring(0,20);
+      html += '<div class="biz-txn-row">';
+      html += '<div class="biz-txn-team">' + e(p.team||'') + '</div>';
+      html += '<span class="biz-txn-badge">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
+      if (tx) html += '<div class="biz-txn-hash">tx: ' + e(tx) + '…</div>';
+      html += '<a href="https://nevermined.app" target="_blank" style="font-size:9px;color:var(--dim2);text-decoration:none">view →</a>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Agent execution cards — parse execSynth into per-agent sections
+  html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">Agent Execution — Running Now</div>';
+  html += '<div class="biz-grid">';
+
+  if (trinityPlan.length > 0 && execSynth) {
+    // Try to match each Trinity agent to a section in the synthesis
+      // Split synthesis into sections by agent headers (**, ##, or numbered)
+      const sections = execSynth.split(/(?=\*\*[A-Z]|##\s|[1-9]\.\s\*\*)/g).filter(s => s.trim().length > 10);
+    trinityPlan.slice(0,4).forEach((ag, i) => {
+      const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
+      const cls = (ag.template||'').toLowerCase();
+      // Try to find the relevant section
+      const agName = (ag.name||'').toLowerCase();
+      const agRole = (ag.role||'').toLowerCase();
+      let agOutput = '';
+      // Search sections for this agent's name or role
+      for (const sec of sections) {
+        const sl = sec.toLowerCase();
+        if (sl.includes(agName) || sl.includes(agRole) || sl.includes(ag.template||'')) {
+          agOutput = sec.replace(/^[\s*#0-9.]+/, '').trim();
+          break;
+        }
+      }
+      // Fallback: assign section by index
+      if (!agOutput && sections[i]) agOutput = sections[i].replace(/^[\s*#0-9.]+/, '').trim();
+      if (!agOutput) agOutput = ag.output_preview || ag.task || 'Running task...';
+
+      html += '<div class="biz-agent-card ' + e(cls) + '" style="border-color:' + col + '">';
+      html += '<div style="font-size:8px;color:' + col + ';text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px">' + e(ag.template||'agent') + '</div>';
+      html += '<div class="biz-agent-name">' + e(ag.name||'') + '</div>';
+      html += '<div class="biz-agent-role">' + e(ag.role||'') + '</div>';
+      html += '<div class="biz-agent-output">' + e(agOutput).replace(/\\n/g,'<br>') + '</div>';
+      html += '<div class="biz-agent-status"><span class="dot-pulse"></span><span style="color:var(--green);font-size:9px">running</span>';
+      html += '<span style="color:var(--dim2);font-size:9px;margin-left:auto">' + e(ag.task ? ag.task.substring(0,40)+'…' : '') + '</span></div>';
+      html += '</div>';
+    });
+  } else if (execSynth) {
+    // No Trinity plan — show raw synthesis in a single card
+    html += '<div class="biz-agent-card" style="grid-column:1/-1">';
+    html += '<div style="font-size:9px;color:var(--dim);margin-bottom:8px">Agent Synthesis</div>';
+    html += '<div class="biz-agent-output">' + e(execSynth).replace(/\\n/g,'<br>') + '</div>';
+    html += '</div>';
+  } else {
+    // No data yet — show skeleton
+    (purchases.length ? purchases : [{team:'Agent 1'},{team:'Agent 2'}]).slice(0,2).forEach(p => {
+      html += '<div class="biz-agent-card">';
+      html += '<div class="biz-agent-name">' + e(p.team||'Agent') + '</div>';
+      html += '<div class="biz-agent-output loading">Deploying to ' + e(goal) + '... Awaiting first response from agent.</div>';
+      html += '<div class="biz-agent-status"><span class="dot-pulse"></span><span style="color:var(--orange);font-size:9px">initializing</span></div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>'; // end biz-grid
+
+  // Next actions
+  const nextActions = (bizBrief.next_suggested_actions || [
+    'Run deeper competitive analysis with Exa',
+    'Generate pricing strategy for ' + goal,
+    'Find more agents for ' + goal,
+  ]);
+  html += '<div class="biz-next">';
+  html += '<div class="biz-next-title">Next Actions — What should I do?</div>';
+  nextActions.forEach((action, i) => {
+    const labels = ['(a)', '(b)', '(c)'];
+    html += '<button class="biz-next-action" onclick="sendFromBiz(' + JSON.stringify(action) + ')">';
+    html += '<span style="color:var(--dim);font-size:10px">' + (labels[i]||'') + '</span>';
+    html += '<span>' + e(action) + '</span>';
+    html += '<span style="color:var(--dim2);margin-left:auto">→</span>';
+    html += '</button>';
+  });
+  html += '</div>';
+
+  canvas.innerHTML = html;
+}
+
+function sendFromBiz(text) {
+  showView('chat');
+  const inp = document.getElementById('chat-input');
+  if (inp) { inp.value = text; document.getElementById('send-btn').click(); }
 }
 
 // ── Trinity Agent Detail Panel ────────────────────────────────────────────────
@@ -1414,9 +1616,16 @@ async function sendMessage() {
               }
               // Business strategy result card + live orchestration update
               if (r && typeof r === 'object' && r.goal && r.steps) {
-                lastStrategyData = r; // save for flow view
+                lastStrategyData = r; // save for flow + business view
                 auditCards += renderStrategyCard(r);
                 renderOrchestration(r);
+                // Show "Business" tab button as active indicator after strategy completes
+                const btnBiz = document.getElementById('btn-biz');
+                if (btnBiz) {
+                  btnBiz.style.borderColor = 'var(--green)';
+                  btnBiz.style.color = 'var(--green)';
+                  btnBiz.title = 'Business dashboard ready — click to see agents running';
+                }
                 // ZeroClick ad — render once in chat, update sidebar
                 if (r.zeroclick_ad) {
                   const ad = r.zeroclick_ad;
