@@ -1067,71 +1067,91 @@ function renderBizDashboard(data) {
   html += '<div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:18px">';
   html += '<div style="font-size:16px;font-weight:500;margin-bottom:4px">' + e(goal) + '</div>';
   html += '<div style="display:flex;gap:14px;font-size:9px;color:var(--dim);flex-wrap:wrap;text-transform:uppercase;letter-spacing:0.06em">';
-  if (purchases.length) html += '<span style="color:var(--green)">✓ ' + purchases.length + ' agent' + (purchases.length>1?'s':'') + ' purchased</span>';
-  if (realOuts.length)  html += '<span style="color:var(--green)"><span class="dot-pulse"></span> ' + realOuts.length + ' live response' + (realOuts.length>1?'s':'') + '</span>';
-  else html += '<span style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span>ready</span>';
+  if (purchases.length) html += '<span style="color:var(--green)">✓ ' + purchases.length + ' purchased</span>';
+  if (realOuts.length)  html += '<span style="color:var(--green);display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + realOuts.length + ' live response' + (realOuts.length>1?'s':'') + '</span>';
+  else if (!purchases.length) html += '<span style="color:var(--dim2)">no agents yet — run a strategy in Chat</span>';
   html += '</div></div>';
 
-  // ── PURCHASED AGENT CARDS — each with live output + query input ──────────────
+  // ── PURCHASED AGENT CARDS ────────────────────────────────────────────────────
   if (purchases.length > 0) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Purchased agents — running</div>';
+    // Build a lookup of ALL business_outputs by team (including failed attempts)
+    const allOutputs = data.business_outputs || [];
+    const outputByTeam = {};
+    allOutputs.forEach(o => { if (o.team) outputByTeam[o.team] = o; });
+
+    const anyLive = purchases.some(p => {
+      const o = outputByTeam[p.team];
+      return o && o.status === 'ok' && (o.content||'').length > 10;
+    });
+    const hdrColor = anyLive ? 'var(--green)' : 'var(--dim)';
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:' + hdrColor + ';margin-bottom:10px">Purchased agents — ' + purchases.length + ' acquired</div>';
     html += '<div class="biz-grid">';
     purchases.forEach((p, idx) => {
-      const tx  = (p.tx_hash||'').substring(0,18);
-      const out = realOuts.find(o => o.team === p.team || (o.endpoint && p.endpoint && o.endpoint === p.endpoint));
-      const tri = trinity[idx] || {};
-      const tplKey = (tri.template||'').toLowerCase();
-      const accentCol = tmplColors[tplKey] || '#334455';
+      const tx      = (p.tx_hash||'').substring(0,18);
+      const out     = outputByTeam[p.team] || null;
+      const hasLive = out && out.status === 'ok' && (out.content||'').length > 10;
+      const hasFail = out && out.status !== 'ok';
       const isTrinity = (p.endpoint||'').includes('abilityai.dev');
+      const tri     = trinity[idx] || {};
+      const tplKey  = (tri.template||'').toLowerCase();
+      const accentCol = hasLive ? (isTrinity ? 'var(--green)' : '#4488cc') : (tmplColors[tplKey] || '#334455');
 
-      const isProcessing = !out || !out.content;
-      html += '<div class="biz-agent-card ' + (tplKey||'') + (isProcessing ? ' processing' : '') + '" style="border-color:' + accentCol + '20;--accent:' + accentCol + '">';
+      html += '<div class="biz-agent-card ' + (tplKey||'') + '" style="border-color:' + (hasLive ? '#1a4a1a' : '#1a1a2a') + '">';
       html += '<div style="height:2px;background:' + accentCol + ';border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
 
-      // Card header
+      // Header
       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
       html += '<div>';
       html += '<div class="biz-agent-name">' + (isTrinity ? '▲ ' : '') + e(p.team||'') + '</div>';
-      html += '<div class="biz-agent-role">' + (isTrinity ? 'TrinityOS · ' : '') + e((p.endpoint||'').replace('https://','').split('/')[0].substring(0,28)) + '</div>';
+      const epHost = (p.endpoint||'').replace('https://','').replace('http://','').split('/')[0];
+      html += '<div class="biz-agent-role">' + (isTrinity ? 'TrinityOS · ' : '') + e(epHost.substring(0,28)) + '</div>';
       html += '</div>';
       const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
-      html += '<span style="font-size:8px;padding:2px 6px;border-radius:2px;' + badge + ';flex-shrink:0">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
+      html += '<span style="font-size:8px;padding:2px 6px;border-radius:2px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
       html += '</div>';
 
-      // Agent output — real data from TrinityOS or marketplace
-      if (out && out.content) {
-        const srcLabel = isTrinity ? 'TrinityOS live' : 'Live response';
-        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + srcLabel + '</div>';
-        html += '<div class="biz-agent-output">' + e(out.content.substring(0,400)).replace(/\\n/g,'<br>') + '</div>';
-      } else if (tri.live_output) {
-        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>TrinityOS live</div>';
-        html += '<div class="biz-agent-output">' + e(tri.live_output.substring(0,400)).replace(/\\n/g,'<br>') + '</div>';
+      // Output area — honest status, no fake spinners
+      if (hasLive) {
+        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + (isTrinity ? 'TrinityOS response' : 'Live response') + '</div>';
+        html += '<div class="biz-agent-output">' + e((out.content||'').substring(0,500)).replace(/\\n/g,'<br>') + '</div>';
+      } else if (hasFail) {
+        // Show the real error — no fake spinner
+        const errSt = (out.status||'');
+        let errMsg = '';
+        if (errSt.includes('402'))      errMsg = 'Endpoint returned 402 — needs fresh access token. Use "Run →" to re-try.';
+        else if (errSt.includes('500') || errSt.includes('502')) errMsg = 'Endpoint returned ' + errSt.replace('http_','') + ' — agent server may be temporarily down.';
+        else if (errSt.includes('404')) errMsg = 'Endpoint 404 — this agent may have changed URLs.';
+        else if (errSt === 'no_token')  errMsg = 'Could not obtain access token — check NVM_BUYER_API_KEY.';
+        else if (errSt === 'skip')      errMsg = 'Not called — endpoint or plan_id missing.';
+        else                            errMsg = 'Call failed: ' + errSt;
+        html += '<div style="font-size:9px;color:var(--orange);margin-bottom:6px">' + e(errMsg) + '</div>';
+        html += '<div style="font-size:9px;color:var(--dim2)">Use "Run →" below to query this agent directly.</div>';
       } else {
-        const failMsg = tri.status === 'error' ? 'Agent error — sandbox may be unstable' : 'Connecting to agent...';
-        html += '<div class="biz-processing-label"><span class="spinner"></span>' + failMsg + '</div>';
+        // No call was attempted yet
+        html += '<div style="font-size:9px;color:var(--dim2);margin-bottom:6px">Agent purchased — no auto-call attempted yet.</div>';
+        html += '<div style="font-size:9px;color:var(--dim2)">Use "Run →" below to query it directly.</div>';
       }
 
-      // Transaction line
+      // NVM transaction line
       if (tx) {
-        html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px;display:flex;gap:8px;align-items:center">';
-        html += '<span style="color:var(--green)">✓ NVM</span>';
+        html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);padding-top:6px">';
+        html += '<span style="color:var(--green)">✓ NVM tx</span>';
         html += '<span style="font-family:monospace">' + e(tx) + '…</span>';
-        if (p.audit_score) html += '<span style="margin-left:auto">score ' + (p.audit_score).toFixed(2) + '</span>';
+        if (p.audit_score) html += '<span style="margin-left:auto;color:var(--dim)">score ' + p.audit_score.toFixed(2) + '</span>';
         html += '</div>';
       }
 
-      // Interactive query input
+      // Query input — primary interaction
       html += '<div style="margin-top:10px;display:flex;gap:6px">';
-      html += '<input type="text" placeholder="Ask this agent..." data-agent-idx="' + idx + '" style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:10px;font-family:inherit;color:var(--fg);outline:none" />';
-      html += '<button data-agent-run="' + idx + '" style="background:transparent;border:1px solid ' + accentCol + ';color:' + accentCol + ';padding:5px 10px;border-radius:3px;font-size:9px;font-family:inherit;cursor:pointer;white-space:nowrap">Run →</button>';
+      html += '<input type="text" placeholder="Ask this agent anything..." data-agent-idx="' + idx + '"'
+        + ' style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:3px;padding:6px 8px;font-size:10px;font-family:inherit;color:var(--fg);outline:none" />';
+      html += '<button data-agent-run="' + idx + '" style="background:transparent;border:1px solid ' + (hasLive?'var(--green)':'#4488cc') + ';color:' + (hasLive?'var(--green)':'#4488cc') + ';padding:6px 12px;border-radius:3px;font-size:9px;font-family:inherit;cursor:pointer;white-space:nowrap;font-weight:500">Run →</button>';
       html += '</div>';
-
-      // Response area
-      html += '<div class="biz-agent-response" id="biz-resp-' + idx + '" style="display:none;margin-top:8px;font-size:10px;color:#ccc;line-height:1.7;border-left:2px solid ' + accentCol + ';padding-left:8px"></div>';
+      html += '<div class="biz-agent-response" id="biz-resp-' + idx + '" style="display:none;margin-top:8px;font-size:10px;color:#ccc;line-height:1.7;border-left:2px solid ' + accentCol + ';padding-left:8px;white-space:pre-wrap"></div>';
 
       html += '</div>'; // biz-agent-card
     });
-    html += '</div><div style="height:16px"></div>'; // biz-grid
+    html += '</div><div style="height:16px"></div>';
   }
 
   // ── TRINITYOS AGENTS (called separately from purchases) ────────────────────
@@ -1182,7 +1202,7 @@ function renderBizDashboard(data) {
   }
 
   if (!purchases.length && !execSynth) {
-    html += '<div style="color:var(--dim2);font-size:10px;padding:20px 0">No agents purchased yet. Run a strategy in Chat to buy and activate agents.</div>';
+    html += '<div style="color:var(--dim2);font-size:11px;padding:20px 0;line-height:1.8">No agents purchased yet.<br>Go to <b style="color:var(--fg)">Chat</b> and describe a business goal — e.g. <i style="color:var(--dim)">"I want to build a marketing agency"</i>.<br>The agent will find, audit, and buy services from the marketplace on your behalf.</div>';
   }
 
   canvas.innerHTML = html;
