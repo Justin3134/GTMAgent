@@ -293,6 +293,130 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 /* Flow section dividers with arrows */
 .flow-arrow { text-align: center; color: var(--dim2); font-size: 11px; margin: -14px 0 14px; letter-spacing: 0.1em; }
 
+/* ── Pipeline Graph ── */
+#flow-canvas { position: relative; }
+.fg-wrap { max-width: 960px; margin: 0 auto; }
+.fg-goal-box {
+  margin: 0 auto 0 auto;
+  max-width: 420px;
+  border: 1px solid var(--orange);
+  border-radius: 8px;
+  padding: 16px 22px;
+  background: #0a0600;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+.fg-goal-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.fg-goal-sub { font-size: 9px; color: var(--orange); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+.fg-goal-caps { font-size: 9px; color: var(--dim); margin-top: 4px; }
+
+/* SVG connector layer */
+.fg-svg { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; overflow: visible; }
+.fg-line { stroke: #333; stroke-width: 1; fill: none; }
+.fg-line-orange { stroke: #553300; stroke-width: 1; fill: none; }
+.fg-line-green  { stroke: #1a4a1a; stroke-width: 1; fill: none; }
+@keyframes dashIn { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+.fg-line-anim { stroke-dasharray: 300; animation: dashIn 0.8s ease forwards; }
+
+/* 3-column branch row */
+.fg-branches { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 48px; position: relative; z-index: 2; }
+.fg-branch { border: 1px solid var(--border); border-radius: 6px; background: #050505; }
+.fg-branch-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em;
+}
+.fg-branch-body { padding: 8px 10px; min-height: 80px; }
+.fg-branch.mkt .fg-branch-hdr { color: #7799ff; }
+.fg-branch.exa .fg-branch-hdr { color: #ff9944; }
+.fg-branch.api .fg-branch-hdr { color: #9955ff; }
+.fg-mini-card {
+  border-left: 2px solid var(--border); padding: 4px 8px; margin-bottom: 5px;
+  font-size: 10px; cursor: default;
+}
+.fg-mini-card:hover { background: #080808; }
+.fg-mini-name { font-weight: 500; color: var(--fg); }
+.fg-mini-meta { font-size: 9px; color: var(--dim2); margin-top: 1px; }
+.fg-mini-score { font-size: 10px; float: right; margin-top: -16px; }
+
+/* Full-width sections below */
+.fg-section { border: 1px solid var(--border); border-radius: 6px; background: #050505; margin-top: 48px; position: relative; z-index: 2; }
+.fg-section-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim);
+}
+.fg-section-body { padding: 12px 14px; }
+
+/* Competitive analysis table */
+.fg-comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 8px; }
+.fg-comp-card {
+  border: 1px solid #332200; border-radius: 4px; padding: 8px 10px; background: #070400;
+}
+.fg-comp-domain { font-size: 9px; color: #ff9944; margin-bottom: 3px; }
+.fg-comp-title { font-size: 11px; font-weight: 500; margin-bottom: 3px; }
+.fg-comp-snippet { font-size: 9px; color: var(--dim2); line-height: 1.4; }
+
+/* Audit score row */
+.fg-audit-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.fg-audit-chip {
+  border: 1px solid var(--border); border-radius: 5px; padding: 8px 12px;
+  min-width: 140px; background: #060606;
+}
+.fg-audit-chip.buy  { border-color: #1a4a1a; }
+.fg-audit-chip.watch { border-color: #4a3a00; }
+.fg-audit-chip.avoid { border-color: #4a1a1a; }
+.fg-ac-team  { font-size: 11px; font-weight: 500; margin-bottom: 3px; }
+.fg-ac-score { font-size: 20px; font-weight: 300; }
+.fg-ac-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+.fg-ac-sub   { font-size: 9px; color: var(--dim2); margin-top: 5px; line-height: 1.5; }
+
+/* NVM purchase row */
+.fg-purchase-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.fg-purchase-card {
+  border: 1px solid #1a4a1a; border-radius: 5px; padding: 10px 14px;
+  min-width: 200px; background: #030a03;
+}
+.fg-pc-team { font-size: 12px; font-weight: 500; }
+.fg-pc-tx   { font-family: monospace; font-size: 9px; color: var(--dim2); margin-top: 3px; }
+.fg-pc-badge { font-size: 8px; padding: 2px 6px; border-radius: 2px; background: #0d2a0d; color: var(--green); margin-left: 6px; vertical-align: middle; }
+.fg-pc-badge.repeat { background: #2a2a00; color: var(--orange); }
+
+/* Trinity agents running */
+.fg-trinity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 10px; }
+.fg-trinity-agent {
+  border-radius: 5px; padding: 12px; cursor: pointer;
+  transition: transform 0.15s;
+}
+.fg-trinity-agent:hover { transform: translateY(-2px); }
+.fg-ta-role { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.fg-ta-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.fg-ta-task { font-size: 9px; color: var(--dim); line-height: 1.4; margin-bottom: 6px; }
+.fg-ta-out  { font-size: 9px; color: #3a6a3a; font-style: italic; border-left: 2px solid #1a3a1a; padding-left: 6px; margin-bottom: 6px; }
+.fg-ta-status { font-size: 9px; display: flex; align-items: center; gap: 4px; }
+
+/* ZeroClick in flow */
+.fg-zc-card {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  border: 1px solid #1a3a1a; border-radius: 5px; padding: 10px 14px; background: #050f05;
+}
+.fg-zc-badge { font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--green); margin-bottom: 3px; }
+.fg-zc-cta { font-size: 10px; color: var(--green); text-decoration: none; border: 1px solid #1a4a1a; padding: 5px 12px; border-radius: 3px; white-space: nowrap; flex-shrink: 0; }
+.fg-zc-cta:hover { background: #0a200a; }
+
+/* Next actions */
+.fg-next { border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-top: 20px; }
+.fg-next-title { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 10px; }
+.fg-next-btn {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;
+  cursor: pointer; font-size: 11px; background: transparent; color: var(--fg);
+  font-family: inherit; width: 100%; text-align: left; transition: background 0.15s;
+}
+.fg-next-btn:hover { background: #0d0d0d; border-color: #444; }
+.fg-next-btn:last-child { margin-bottom: 0; }
+
 /* ── Business Dashboard ── */
 .biz-header {
   border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px;
@@ -605,305 +729,388 @@ function _arrow() {
 
 function renderFlowView(data) {
   const canvas = document.getElementById('flow-canvas');
-  _flowDelay = 0; // reset animation delay counter
   if (!data) {
-    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat to see the workflow here.<br><br><span style="font-size:10px">Try: "I want to start a marketing agency" or "research AI agents for fintech"</span></div>';
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0;text-align:center">Run a strategy in Chat to see the workflow graph here.<br><br><span style="font-size:10px">Try: "I want to start a marketing agency"</span></div>';
     return;
   }
   const scored = data.audit_scores || [];
-  const apify = data.apify_actors || [];
-  const exa = data.exa_research || {};
+  const apify  = data.apify_actors || [];
+  const exa    = data.exa_research || {};
   const exaHighlights = exa.highlights || [];
-  const exaSearch = exa.search_context || [];
-  const competitors = exa.competitors || [];
-  const allMkt = data.all_marketplace_results || data.candidates || [];
-  const purchases = (data.purchases||[]).filter(p => p.purchased);
-  const roi = data.roi_analysis || {};
-  const caps = data.goal_capabilities || [];
+  const exaSearch     = exa.search_context || [];
+  const competitors   = exa.competitors || [];
+  const allMkt     = data.all_marketplace_results || data.candidates || [];
+  const purchases  = (data.purchases||[]).filter(p => p.purchased);
+  const caps       = data.goal_capabilities || [];
   const trinityPlan = data.trinity_plan || [];
-  const ad = data.zeroclick_ad || null;
+  const ad         = data.zeroclick_ad || null;
+  const execSynth  = data.execution_synthesis || '';
+  const bizOutputs = data.business_outputs || [];
+  const bizBrief   = data.business_brief || {};
+  const tmplColors = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
 
-  let html = '';
-  const exaOk = exaHighlights.length > 0 || exaSearch.length > 0;
-  const tmplColors = {cornelius:'#334499', ruby:'#993344', outbound:'#449933', webmaster:'#996633'};
+  // ── SVG helpers ──────────────────────────────────────────────────────────────
+  // We build HTML then draw SVG lines over it using getBoundingClientRect
+  let html = '<div class="fg-wrap">';
 
   // ── 0: GOAL ──────────────────────────────────────────────────────────────────
-  html += _sec(
-    '<div class="flow-goal">' +
-      '<div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--orange);margin-bottom:4px">Business Goal</div>' +
-      '<div class="flow-goal-title">' + e(data.goal||'') + '</div>' +
-      (caps.length ? '<div class="flow-goal-caps">needed: ' + caps.map(e).join(' · ') + '</div>' : '') +
-      '<div class="flow-goal-phase">▼ parallel research: marketplace · competitive analysis · automation actors</div>' +
-    '</div>'
-  );
+  html += '<div id="fgn-goal" class="fg-goal-box">';
+  html += '<div class="fg-goal-sub">Business Goal</div>';
+  html += '<div class="fg-goal-title">' + e(data.goal||'') + '</div>';
+  if (caps.length) html += '<div class="fg-goal-caps">needs: ' + caps.map(e).join(' · ') + '</div>';
+  html += '<div style="font-size:9px;color:var(--dim2);margin-top:6px">parallel research starting below</div>';
+  html += '</div>';
 
-  // ── 1: RESEARCH PHASE (3 branches) ──────────────────────────────────────────
-  let brHtml = '<div class="flow-branches">';
+  // ── 1: 3-BRANCH ROW (Marketplace · Exa · Apify) ──────────────────────────────
+  html += '<div class="fg-branches">';
 
-  // Marketplace branch
-  brHtml += '<div class="flow-branch mkt">';
-  brHtml += '<div class="flow-branch-header"><span>Marketplace Search</span><span style="font-weight:300">' + allMkt.length + ' agents</span></div>';
-  brHtml += '<div class="flow-branch-body">';
+  // — Marketplace
+  html += '<div class="fg-branch mkt" id="fgn-mkt">';
+  html += '<div class="fg-branch-hdr"><span>Marketplace</span><span style="opacity:0.6">' + allMkt.length + ' agents</span></div>';
+  html += '<div class="fg-branch-body">';
   allMkt.slice(0,5).forEach(m => {
     const sc = scored.find(s => s.team === m.team);
     const scv = sc ? sc.overall_score : null;
-    const cls = scv === null ? '' : scv >= 0.6 ? ' scored-buy' : scv >= 0.4 ? ' scored-watch' : ' scored-avoid';
-    const col = scv === null ? 'var(--dim)' : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
-    brHtml += '<div class="flow-card' + cls + '">';
-    brHtml += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
-    brHtml += '<div class="fc-name">' + e(m.team||'') + '</div>';
-    if (scv !== null) brHtml += '<div class="fc-score" style="color:' + col + '">' + scv.toFixed(2) + '</div>';
-    brHtml += '</div>';
-    brHtml += '<div class="fc-meta">' + e((m.category||m.price||'').substring(0,40)) + '</div>';
-    if (sc && sc.roi_decision) brHtml += '<div style="font-size:9px;color:' + col + ';margin-top:2px;letter-spacing:0.05em">' + e(sc.roi_decision) + (sc.avg_latency_ms ? ' · ' + sc.avg_latency_ms.toFixed(0) + 'ms' : '') + '</div>';
-    brHtml += '</div>';
+    const col = scv === null ? 'var(--border)' : scv >= 0.6 ? '#1a4a1a' : scv >= 0.4 ? '#4a3a00' : '#4a1a1a';
+    const scoreTxt = scv !== null ? scv.toFixed(2) : '';
+    const scoreCol = scv === null ? '' : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
+    html += '<div class="fg-mini-card" style="border-color:' + col + '">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
+    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,22)) + '</div>';
+    if (scoreTxt) html += '<div style="font-size:10px;color:' + scoreCol + '">' + scoreTxt + '</div>';
+    html += '</div>';
+    html += '<div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,35)) + '</div>';
+    if (sc && sc.roi_decision) html += '<div style="font-size:9px;color:' + scoreCol + ';margin-top:2px">' + e(sc.roi_decision) + (sc.avg_latency_ms ? ' · ' + Math.round(sc.avg_latency_ms) + 'ms' : '') + '</div>';
+    html += '</div>';
   });
-  if (ad) brHtml += _zcInline(ad, 'similar service');
-  brHtml += '</div></div>';
+  if (ad) {
+    html += '<div style="margin-top:6px;padding:5px 8px;border:1px solid #1a3a1a;border-radius:3px;background:#040a04">';
+    html += '<div style="font-size:8px;color:var(--green);letter-spacing:0.08em;margin-bottom:2px">◉ ZeroClick</div>';
+    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:9px;color:#3a7a3a;text-decoration:none" data-offer-id="' + e(ad.id||'') + '">' + e((ad.title||'').substring(0,40)) + ' →</a>';
+    html += '</div>';
+  }
+  html += '</div></div>';
 
-  // Exa branch
-  brHtml += '<div class="flow-branch exa">';
-  brHtml += '<div class="flow-branch-header"><span>Exa Web Research</span><span style="font-weight:300">' + (exaOk ? exaHighlights.length + exaSearch.length + ' results' : (_keyStatus.exa ? 'key active' : 'no key')) + '</span></div>';
-  brHtml += '<div class="flow-branch-body">';
-  exaHighlights.slice(0,3).forEach(h => {
-    brHtml += '<div class="flow-card" style="border-color:#332200;background:#060400">';
-    brHtml += '<div style="color:var(--dim);font-size:10px;line-height:1.4">' + e(String(h).substring(0,100)) + '</div>';
-    brHtml += '</div>';
-  });
+  // — Exa Web Research
+  html += '<div class="fg-branch exa" id="fgn-exa">';
+  html += '<div class="fg-branch-hdr"><span>Exa Research</span><span style="opacity:0.6">' + (exaSearch.length + exaHighlights.length) + ' results</span></div>';
+  html += '<div class="fg-branch-body">';
   exaSearch.slice(0,3).forEach(r => {
     const url = r.url || '';
-    const domain = url.replace('https://','').replace('http://','').split('/')[0];
-    brHtml += '<div class="flow-card" style="border-color:#332200;background:#060400">';
-    brHtml += '<div class="fc-name">' + e((r.title||domain).substring(0,45)) + '</div>';
-    brHtml += '<div class="fc-meta">' + e(domain) + '</div>';
-    if (r.snippet) brHtml += '<div style="color:var(--dim2);font-size:9px;margin-top:2px;line-height:1.3">' + e(r.snippet.substring(0,80)) + '</div>';
-    brHtml += '</div>';
+    const domain = url.replace(/https?:\/\//,'').split('/')[0];
+    html += '<div class="fg-mini-card" style="border-color:#332200">';
+    html += '<div class="fg-mini-name">' + e((r.title||domain).substring(0,38)) + '</div>';
+    html += '<div class="fg-mini-meta"><a href="' + e(url) + '" target="_blank" style="color:#ff9944;text-decoration:none">' + e(domain.substring(0,30)) + '</a></div>';
+    if (r.highlights && r.highlights[0]) html += '<div style="font-size:9px;color:var(--dim2);margin-top:2px;line-height:1.3">' + e(r.highlights[0].substring(0,70)) + '…</div>';
+    html += '</div>';
   });
-  if (!exaOk) brHtml += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">' + (_keyStatus.exa ? 'Run a strategy to see results' : 'Add EXA_API_KEY to enable') + '</div>';
-  if (ad && data.competitive_analysis) brHtml += _zcInline(ad, 'competitive alternative');
-  brHtml += '</div></div>';
+  if (exaHighlights.slice(0,2).length) {
+    exaHighlights.slice(0,2).forEach(h => {
+      html += '<div class="fg-mini-card" style="border-color:#332200">';
+      html += '<div style="font-size:9px;color:var(--dim);line-height:1.4">' + e(String(h).substring(0,100)) + '</div>';
+      html += '</div>';
+    });
+  }
+  if (!exaSearch.length && !exaHighlights.length) {
+    html += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No results — Exa search ran but returned empty</div>';
+  }
+  if (ad && data.competitive_analysis) {
+    html += '<div style="margin-top:6px;padding:5px 8px;border:1px solid #1a3a1a;border-radius:3px;background:#040a04">';
+    html += '<div style="font-size:8px;color:var(--green);letter-spacing:0.08em;margin-bottom:2px">◉ ZeroClick — competitive insight</div>';
+    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:9px;color:#3a7a3a;text-decoration:none">' + e((ad.title||'').substring(0,40)) + ' →</a>';
+    html += '</div>';
+  }
+  html += '</div></div>';
 
-  // Apify branch
-  brHtml += '<div class="flow-branch apify">';
-  brHtml += '<div class="flow-branch-header"><span>Apify Store</span><span style="font-weight:300">' + apify.length + ' actors</span></div>';
-  brHtml += '<div class="flow-branch-body">';
+  // — Apify Store
+  html += '<div class="fg-branch api" id="fgn-apify">';
+  html += '<div class="fg-branch-hdr"><span>Apify Store</span><span style="opacity:0.6">' + apify.length + ' actors</span></div>';
+  html += '<div class="fg-branch-body">';
   apify.slice(0,5).forEach(a => {
     const url = a.url || a.apify_url || '';
-    brHtml += '<div class="flow-card" style="border-color:#221133;background:#040309">';
-    brHtml += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
-    brHtml += '<div class="fc-name">' + e((a.name||'Actor').substring(0,30)) + '</div>';
-    if (url) brHtml += '<a class="fc-link" href="' + e(url) + '" target="_blank">open →</a>';
-    brHtml += '</div>';
-    brHtml += '<div class="fc-meta">' + e((a.description||'').substring(0,60)) + '</div>';
-    brHtml += '</div>';
+    html += '<div class="fg-mini-card" style="border-color:#221133">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
+    html += '<div class="fg-mini-name">' + e((a.name||'Actor').replace('Apify: ','').substring(0,28)) + '</div>';
+    if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#9955ff;text-decoration:none">open →</a>';
+    html += '</div>';
+    html += '<div class="fg-mini-meta">' + e((a.description||'').substring(0,55)) + '</div>';
+    if (a.runs) html += '<div style="font-size:9px;color:var(--dim2);margin-top:1px">' + a.runs.toLocaleString() + ' runs</div>';
+    html += '</div>';
   });
-  if (!apify.length) brHtml += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No actors found for this goal</div>';
-  brHtml += '</div></div>';
+  if (!apify.length) html += '<div style="color:var(--dim2);font-size:10px;padding:8px 0">No actors found for this goal</div>';
+  html += '</div></div>';
 
-  brHtml += '</div>'; // end .flow-branches
-  html += _sec(brHtml);
+  html += '</div>'; // end fg-branches
 
-  // ── 2: COMPETITIVE ANALYSIS (Exa) ───────────────────────────────────────────
-  if (data.competitive_analysis || competitors.length > 0) {
-    let caHtml = _secLabel('Competitive Analysis — Exa web intelligence');
+  // ── 2: COMPETITIVE ANALYSIS ──────────────────────────────────────────────────
+  if (competitors.length > 0 || data.competitive_analysis) {
+    html += '<div class="fg-section" id="fgn-comp">';
+    html += '<div class="fg-section-hdr"><span>Competitive Analysis — Exa Intelligence</span><span style="color:var(--orange)">web-sourced</span></div>';
+    html += '<div class="fg-section-body">';
     if (competitors.length > 0) {
-      caHtml += '<table class="comp-table"><thead><tr><th>Competitor / Source</th><th>Domain</th><th>Key Insight</th></tr></thead><tbody>';
+      html += '<div class="fg-comp-grid">';
       competitors.forEach(c => {
-        const domain = (c.url||'').replace('https://','').replace('http://','').split('/')[0];
-        caHtml += '<tr>';
-        caHtml += '<td style="font-weight:500">' + e((c.title||domain).substring(0,40)) + '</td>';
-        caHtml += '<td><a href="' + e(c.url||'#') + '" target="_blank" style="color:#5577ff;text-decoration:none;font-size:9px">' + e(domain.substring(0,30)) + '</a></td>';
-        caHtml += '<td style="color:var(--dim)">' + e((c.snippet||'').substring(0,90)) + '</td>';
-        caHtml += '</tr>';
+        const domain = (c.url||'').replace(/https?:\/\//,'').split('/')[0];
+        html += '<div class="fg-comp-card">';
+        html += '<div class="fg-comp-domain"><a href="' + e(c.url||'#') + '" target="_blank" style="color:#ff9944;text-decoration:none">' + e(domain.substring(0,30)) + '</a></div>';
+        html += '<div class="fg-comp-title">' + e((c.title||domain).substring(0,45)) + '</div>';
+        if (c.snippet) html += '<div class="fg-comp-snippet">' + e(c.snippet.substring(0,100)) + '</div>';
+        html += '</div>';
       });
-      caHtml += '</tbody></table>';
+      html += '</div>';
     }
     if (data.competitive_analysis) {
-      caHtml += '<div style="margin-top:10px;padding:10px 12px;background:#080600;border:1px solid #332200;border-radius:4px;font-size:10px;color:var(--dim);line-height:1.6">' +
-        '<span style="color:#ff8833;font-size:9px;letter-spacing:0.06em;text-transform:uppercase">Synthesis · </span>' +
-        e(data.competitive_analysis.substring(0,300)) + '</div>';
+      html += '<div style="margin-top:10px;padding:10px 12px;background:#070400;border:1px solid #332200;border-radius:4px;font-size:10px;color:var(--dim);line-height:1.6">';
+      html += '<span style="font-size:8px;color:#ff8833;text-transform:uppercase;letter-spacing:0.07em">Exa synthesis — </span>';
+      html += e(data.competitive_analysis.substring(0,350));
+      html += '</div>';
     }
-    html += _sec(caHtml);
+    html += '</div></div>';
   }
 
-  // ── 3: AUDIT DECISIONS ───────────────────────────────────────────────────────
+  // ── 3: AUDIT SCORES ──────────────────────────────────────────────────────────
   if (scored.length > 0) {
-    let adHtml = _secLabel('Audit Scores — real HTTP probes + OpenAI scoring');
-    adHtml += '<div class="flow-audit-row">';
+    html += '<div class="fg-section" id="fgn-audit">';
+    html += '<div class="fg-section-hdr"><span>Audit Scores — real HTTP probes + OpenAI quality scoring</span><span style="color:var(--dim2)">how scores work: latency (real ms) + quality (LLM eval) + price tier + consistency</span></div>';
+    html += '<div class="fg-section-body"><div class="fg-audit-row">';
     scored.forEach(s => {
       const sc = s.overall_score || 0;
       const cls = sc >= 0.6 ? 'buy' : sc >= 0.4 ? 'watch' : 'avoid';
       const col = sc >= 0.6 ? 'var(--green)' : sc >= 0.4 ? 'var(--orange)' : 'var(--red)';
-      const roi = s.roi_decision || s.recommendation || '';
-      adHtml += '<div class="flow-audit-card ' + cls + '">';
-      adHtml += '<div class="fac-team">' + e(s.team||'') + '</div>';
-      adHtml += '<div class="fac-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
-      adHtml += '<div class="fac-label" style="color:' + col + '">' + e(roi) + '</div>';
-      if (s.avg_latency_ms || s.quality_score !== undefined) {
-        adHtml += '<div class="fac-sub">';
-        if (s.quality_score !== undefined) adHtml += 'quality ' + (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?' (est)':'') + '<br>';
-        if (s.avg_latency_ms) adHtml += 'latency ' + s.avg_latency_ms.toFixed(0) + 'ms<br>';
-        if (s.price_score !== undefined) adHtml += 'price value ' + (s.price_score||0).toFixed(2);
-        adHtml += '</div>';
-      }
-      adHtml += '</div>';
+      const roi = s.roi_decision || '';
+      html += '<div class="fg-audit-chip ' + cls + '">';
+      html += '<div class="fg-ac-team">' + e(s.team||'') + '</div>';
+      html += '<div class="fg-ac-score" style="color:' + col + '">' + sc.toFixed(2) + '</div>';
+      html += '<div class="fg-ac-label" style="color:' + col + '">' + e(roi) + '</div>';
+      html += '<div class="fg-ac-sub">';
+      if (s.quality_score !== undefined) html += 'quality: ' + (s.quality_score||0).toFixed(2) + (s.quality_score===0.5?' <span style="color:var(--dim2)">(paid endpoint — estimated)</span>':'') + '<br>';
+      if (s.avg_latency_ms) html += 'latency: ' + Math.round(s.avg_latency_ms) + 'ms<br>';
+      if (s.price_score !== undefined) html += 'price value: ' + (s.price_score||0).toFixed(2) + '<br>';
+      if (s.consistency_score !== undefined) html += 'consistency: ' + (s.consistency_score||0).toFixed(2);
+      html += '</div></div>';
     });
-    adHtml += '</div>';
-    html += _sec(adHtml);
+    html += '</div></div></div>';
   }
 
   // ── 4: NEVERMINED PURCHASES ──────────────────────────────────────────────────
   if (purchases.length > 0) {
-    let pHtml = _secLabel('Nevermined Purchases — order_plan blockchain transactions');
-    pHtml += '<div class="flow-purchase-row">';
+    html += '<div class="fg-section" id="fgn-purchase">';
+    html += '<div class="fg-section-hdr"><span>Nevermined Purchases — order_plan() blockchain transactions</span><span style="color:var(--green)">' + purchases.length + ' confirmed</span></div>';
+    html += '<div class="fg-section-body"><div class="fg-purchase-row">';
     purchases.forEach(p => {
-      const tx = (p.tx_hash||'').substring(0,16);
-      pHtml += '<div class="flow-purchase-card">';
-      pHtml += '<div class="fpc-team">' + e(p.team||'') + '<span class="fpc-badge ' + (p.repeat_purchase?'repeat':'new') + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
-      pHtml += '<div style="color:var(--green);font-size:13px;font-weight:500;margin:3px 0">order_plan ✓</div>';
-      pHtml += '<div style="color:var(--dim);font-size:9px">roi: ' + e(p.roi_decision||'BUY') + '</div>';
-      if (tx) pHtml += '<div class="fpc-tx">tx: ' + e(tx) + '…</div>';
-      pHtml += '</div>';
+      const tx = (p.tx_hash||'').substring(0,18);
+      html += '<div class="fg-purchase-card">';
+      html += '<div class="fg-pc-team">' + e(p.team||'') + '<span class="fg-pc-badge' + (p.repeat_purchase?' repeat':'') + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
+      html += '<div style="color:var(--green);font-size:13px;font-weight:500;margin:4px 0">order_plan ✓</div>';
+      html += '<div style="font-size:9px;color:var(--dim)">roi: ' + e(p.roi_decision||'BUY') + ' · score: ' + (p.audit_score||0).toFixed(2) + '</div>';
+      if (tx) html += '<div class="fg-pc-tx">tx: ' + e(tx) + '…</div>';
+      html += '</div>';
     });
-    pHtml += '</div>';
-    if (roi.roi_rationale) {
-      pHtml += '<div style="margin-top:10px;padding:8px 10px;background:#030a03;border:1px solid #0d2a0d;border-radius:4px;font-size:10px;color:var(--dim)">' +
-        '<span style="color:var(--green);font-size:9px;letter-spacing:0.05em;text-transform:uppercase">ROI · </span>' + e(roi.roi_rationale) + '</div>';
+    html += '</div>';
+    if (data.competitive_analysis) {
+      html += '<div style="margin-top:10px;padding:8px 10px;background:#020a02;border:1px solid #0d2a0d;border-radius:4px;font-size:10px;color:var(--dim)">ROI basis: top audit score + latency + price tier. Avoided ' + ((data.audit_scores||[]).length - purchases.length) + ' lower-score services.</div>';
     }
-    html += _sec(pHtml);
+    html += '</div></div>';
   }
 
-  // ── 5: ZEROCLICK RECOMMENDATION ─────────────────────────────────────────────
+  // ── 5: ZEROCLICK AD ──────────────────────────────────────────────────────────
   if (ad) {
-    let zcHtml = _secLabel('ZeroClick — AI-native contextual recommendation');
-    zcHtml += '<div class="flow-zc-card">';
-    zcHtml += '<div><div class="flow-zc-badge">◉ Sponsored · ZeroClick AI-native ads</div>';
-    zcHtml += '<div style="font-weight:500;font-size:12px;margin-bottom:3px">' + e(ad.title||ad.sponsor||'') + '</div>';
-    zcHtml += '<div style="font-size:10px;color:var(--dim);line-height:1.4">' + e((ad.message||'').substring(0,120)) + '</div></div>';
-    zcHtml += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:var(--green);text-decoration:none;border:1px solid #1a4a1a;padding:6px 12px;border-radius:3px;white-space:nowrap;flex-shrink:0">' + e(ad.cta||'Learn more') + ' →</a>';
-    zcHtml += '</div>';
-    html += _sec(zcHtml);
+    html += '<div class="fg-section" id="fgn-zc" style="border-color:#1a4a1a">';
+    html += '<div class="fg-section-hdr" style="border-color:#1a4a1a"><span>◉ ZeroClick — AI-native contextual ad based on your goal</span><span style="color:var(--green)">live</span></div>';
+    html += '<div class="fg-section-body"><div class="fg-zc-card">';
+    html += '<div>';
+    html += '<div class="fg-zc-badge">Sponsored · ZeroClick</div>';
+    html += '<div style="font-weight:500;font-size:12px;margin-bottom:3px">' + e(ad.title||ad.sponsor||'') + '</div>';
+    html += '<div style="font-size:10px;color:var(--dim);line-height:1.4">' + e((ad.message||'').substring(0,130)) + '</div>';
+    html += '</div>';
+    html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" class="fg-zc-cta" data-offer-id="' + e(ad.id||'') + '">' + e(ad.cta||'Learn more') + ' →</a>';
+    html += '</div></div></div>';
   }
 
-  // ── 6: ABILITYAI TRINITY FLEET ───────────────────────────────────────────────
+  // ── 6: TRINITY AGENT FLEET ───────────────────────────────────────────────────
   if (trinityPlan.length > 0) {
-    // Store for detail panel
     window._trinityFleet = {agents: trinityPlan, apify, goal: data.goal};
-    let tHtml = _secLabel('▲ AbilityAI Trinity — autonomous agent fleet generated for your goal');
-    tHtml += '<div style="font-size:10px;color:var(--dim);margin-bottom:10px">Click any agent to explore capabilities and related automation actors</div>';
-    tHtml += '<div class="flow-trinity-grid">';
+    html += '<div class="fg-section" id="fgn-trinity">';
+    html += '<div class="fg-section-hdr"><span>▲ AbilityAI Trinity — autonomous agent fleet</span><span style="color:var(--dim2)">click agent to explore</span></div>';
+    html += '<div class="fg-section-body"><div class="fg-trinity-grid">';
     trinityPlan.forEach((ag, i) => {
       const col = tmplColors[(ag.template||'').toLowerCase()] || '#444466';
-      // Find related Apify actors for this agent type
       const relApify = apify.filter(a => {
         const aName = (a.name||'').toLowerCase();
         const role = (ag.role||'').toLowerCase();
         return aName.includes(role.split(' ')[0]) || role.includes(aName.split(' ')[0]);
-      }).slice(0,2);
-      tHtml += '<div class="flow-trinity-card" style="border-color:' + col + '" data-trinity-idx="' + i + '">';
-      tHtml += '<span class="ftc-explore">tap →</span>';
-      tHtml += '<div class="ftc-template" style="color:' + col + '">' + e(ag.template||'agent') + '</div>';
-      tHtml += '<div class="ftc-name">' + e(ag.name||'') + '</div>';
-      tHtml += '<div class="ftc-role">' + e(ag.role||'') + '</div>';
-      tHtml += '<div class="ftc-task">' + e((ag.task||'').substring(0,80)) + '</div>';
-      if (ag.output_preview) tHtml += '<div style="margin-top:5px;font-size:9px;color:#3a6a3a;font-style:italic">' + e(ag.output_preview.substring(0,75)) + '</div>';
-      tHtml += '<div class="ftc-status"><span class="dot-pulse"></span><span style="color:var(--green)">running</span></div>';
-      if (relApify.length) tHtml += '<div style="margin-top:5px;font-size:9px;color:var(--dim2)">tools: ' + relApify.map(a => e((a.name||'').substring(0,18))).join(', ') + '</div>';
-      tHtml += '</div>';
+      }).slice(0,1);
+      html += '<div class="fg-trinity-agent" style="border:1px solid ' + col + ';background:#050505" data-trinity-idx="' + i + '">';
+      html += '<div class="fg-ta-role" style="color:' + col + '">' + e(ag.template||'agent') + ' · trinity</div>';
+      html += '<div class="fg-ta-name">' + e(ag.name||'') + '</div>';
+      html += '<div class="fg-ta-task">' + e((ag.task||'').substring(0,90)) + '</div>';
+      if (ag.output_preview) html += '<div class="fg-ta-out">' + e(ag.output_preview.substring(0,80)) + '</div>';
+      if (relApify.length) html += '<div style="font-size:9px;color:var(--dim2);margin-bottom:5px">tool: ' + e((relApify[0].name||'').replace('Apify: ','').substring(0,28)) + '</div>';
+      html += '<div class="fg-ta-status"><span class="dot-pulse"></span><span style="color:var(--green)">running</span>';
+      html += '<span style="margin-left:auto;font-size:9px;color:var(--dim2)">tap →</span></div>';
+      html += '</div>';
     });
-    tHtml += '</div>';
-    html += _sec(tHtml);
+    html += '</div></div></div>';
   }
 
-  // ── 7: LIVE BUSINESS EXECUTION RESULTS ──────────────────────────────────────
-  const bizOutputs = data.business_outputs || [];
-  const apifyRun   = data.apify_run_result || null;
+  // ── 7: AGENT EXECUTION OUTPUTS ───────────────────────────────────────────────
+  if (execSynth || bizOutputs.length > 0) {
+    html += '<div class="fg-section" id="fgn-exec">';
+    html += '<div class="fg-section-hdr"><span>Agent Outputs — live execution results</span><span style="color:var(--green)">running</span></div>';
+    html += '<div class="fg-section-body">';
 
-  // Show execution section if there are outputs OR purchases (show pending state)
-  const execPurchases = (data.purchases || []).filter(p => p.purchased);
-  if (bizOutputs.length > 0 || apifyRun || execPurchases.length > 0) {
-    let exHtml = _secLabel('Live Business Execution — agents called with your goal');
-    exHtml += '<div style="font-size:10px;color:var(--dim);margin-bottom:10px">';
-    exHtml += 'Real-time responses from purchased agents, orchestrated by Trinity. Each agent ran your business goal as a task.';
-    exHtml += '</div>';
-
-    // If no outputs yet but we have purchases, show pending state
-    if (bizOutputs.length === 0 && execPurchases.length > 0) {
-      exHtml += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">';
-      execPurchases.forEach(p => {
-        exHtml += '<div class="exec-card" style="opacity:0.8;border-color:#1a2a1a">';
-        exHtml += '<div class="exec-card-header"><div class="exec-card-team">' + e(p.team||'') + '</div>';
-        exHtml += '<div style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span><span style="font-size:9px;color:var(--dim)">awaiting response</span></div></div>';
-        exHtml += '<div class="exec-card-content" style="color:var(--dim2)">Agent purchased — calling endpoint with business goal...</div></div>';
+    // Real responses from purchased agents
+    const realOutputs = bizOutputs.filter(b => b.status === 'ok');
+    if (realOutputs.length > 0) {
+      html += '<div style="margin-bottom:12px">';
+      realOutputs.forEach(biz => {
+        html += '<div style="border:1px solid #1a4a1a;border-radius:5px;padding:10px 12px;margin-bottom:8px;background:#030a03">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+        html += '<div style="font-weight:500;font-size:12px">' + e(biz.team||'') + '</div>';
+        html += '<div style="display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span><span style="font-size:8px;color:var(--green);text-transform:uppercase;letter-spacing:0.07em">live output</span></div>';
+        html += '</div>';
+        html += '<div style="font-size:10px;color:#ccc;line-height:1.6;border-left:2px solid #1a4a1a;padding-left:10px">' + e(biz.content||'').replace(/\\n/g,'<br>') + '</div>';
+        html += '</div>';
       });
-      exHtml += '</div>';
-    }
-    exHtml += '<div class="exec-grid">';
-
-    bizOutputs.forEach(biz => {
-      const ok = biz.status === 'ok';
-      const rawContent = (biz.content || '').trim();
-      const lines = rawContent.split('\\n').filter(l => l.trim());
-      let formatted = '';
-      if (lines.length > 1) {
-        formatted = '<strong>' + e(lines[0]) + '</strong><br>' + lines.slice(1).map(l => e(l)).join('<br>');
-      } else {
-        formatted = e(rawContent);
-      }
-
-      exHtml += '<div class="exec-card' + (ok ? ' exec-running' : '') + '" style="' + (ok ? '' : 'opacity:0.7;border-color:#2a1a00') + '">';
-      exHtml += '<div class="exec-card-header">';
-      exHtml += '<div class="exec-card-team">' + e(biz.team||'') + '</div>';
-      if (ok) {
-        exHtml += '<div style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span><span class="exec-card-badge">live output</span></div>';
-      } else {
-        exHtml += '<div style="font-size:8px;padding:2px 6px;border-radius:2px;background:#2a1500;color:var(--orange)">' + e(biz.status||'pending') + '</div>';
-      }
-      exHtml += '</div>';
-      exHtml += '<div class="exec-card-content">' + formatted + '</div>';
-      if (biz.endpoint) {
-        exHtml += '<div style="margin-top:6px;font-size:9px;color:var(--dim2)">' + e(biz.endpoint.replace('https://','').split('/')[0]) + '</div>';
-      }
-      exHtml += '</div>';
-    });
-
-    // Apify run results
-    if (apifyRun && apifyRun.status === 'completed' && apifyRun.items) {
-      exHtml += '<div class="apify-run-card">';
-      exHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-      exHtml += '<div style="font-weight:500;font-size:12px">Apify: ' + e(apifyRun.actor||'Scraper') + '</div>';
-      exHtml += '<span style="font-size:8px;letter-spacing:0.07em;text-transform:uppercase;padding:2px 6px;border-radius:2px;background:#221133;color:#8855ff">' + (apifyRun.item_count||0) + ' items</span>';
-      exHtml += '</div>';
-      apifyRun.items.forEach(item => {
-        const title = item.title || item.name || item.url || JSON.stringify(item).substring(0,50);
-        const url = item.url || item.link || '';
-        exHtml += '<div class="apify-run-item">';
-        if (url) {
-          exHtml += '<a href="' + e(url) + '" target="_blank" style="color:#8855ff;text-decoration:none;font-size:10px">' + e(String(title).substring(0,55)) + ' →</a>';
-        } else {
-          exHtml += '<div style="font-size:10px;color:var(--dim)">' + e(String(title).substring(0,70)) + '</div>';
-        }
-        if (item.description) exHtml += '<div style="font-size:9px;color:var(--dim2);margin-top:2px">' + e(item.description.substring(0,80)) + '</div>';
-        exHtml += '</div>';
-      });
-      exHtml += '</div>';
-    } else if (apifyRun && apifyRun.actor) {
-      exHtml += '<div class="apify-run-card">';
-      exHtml += '<div style="font-weight:500;font-size:12px;margin-bottom:4px">Apify: ' + e(apifyRun.actor) + '</div>';
-      exHtml += '<div style="font-size:10px;color:var(--dim)">' + e(apifyRun.reason || 'Actor queued — results pending') + '</div>';
-      exHtml += '</div>';
+      html += '</div>';
     }
 
-    exHtml += '</div>';
-    html += _sec(exHtml);
+    // Execution synthesis (always shown — OpenAI-generated specific deliverables)
+    if (execSynth) {
+      html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:8px">OpenAI Execution Synthesis — specific deliverables per agent</div>';
+      const sections = execSynth.split(/(?=###\s|\*\*[A-Z]|^\d\.\s\*\*)/m).filter(s => s.trim().length > 10);
+      if (sections.length > 1) {
+        // Render each section as an agent card
+        sections.slice(0,4).forEach((sec, i) => {
+          const lines = sec.trim().split('\\n').filter(l => l.trim());
+          const titleLine = lines[0] || '';
+          const bodyLines = lines.slice(1);
+          const title = titleLine.replace(/^[#*\d.\s]+/, '').replace(/\*\*/g,'').trim().substring(0,50);
+          const body = bodyLines.join(' ').replace(/\*\*/g,'').substring(0,300);
+          const cols = ['#334499','#993344','#449933','#996633'];
+          const c = cols[i % cols.length];
+          html += '<div style="border-left:3px solid ' + c + ';padding:8px 12px;margin-bottom:8px;background:#060606;border-radius:0 4px 4px 0">';
+          html += '<div style="font-size:10px;font-weight:500;color:#ccc;margin-bottom:5px">' + e(title) + '</div>';
+          html += '<div style="font-size:10px;color:var(--dim);line-height:1.6">' + e(body) + '</div>';
+          html += '<div style="margin-top:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span><span style="font-size:9px;color:var(--green)">executing</span></div>';
+          html += '</div>';
+        });
+      } else {
+        html += '<div style="font-size:10px;color:var(--dim);line-height:1.7;border-left:2px solid var(--border);padding-left:12px">' + e(execSynth.substring(0,500)) + '</div>';
+      }
+    }
+    html += '</div></div>';
   }
 
+  // ── 8: NEXT ACTIONS ──────────────────────────────────────────────────────────
+  const nextActions = bizBrief.next_suggested_actions || [
+    'Run deeper competitive analysis for ' + (data.goal||'this goal'),
+    'Generate a pricing strategy for my agency',
+    'Find more specialized agents in the marketplace',
+  ];
+  html += '<div class="fg-next" id="fgn-next">';
+  html += '<div class="fg-next-title">Next Actions</div>';
+  const labels = ['(a)','(b)','(c)'];
+  nextActions.slice(0,3).forEach((action, i) => {
+    html += '<button class="fg-next-btn" data-action="' + e(action) + '">';
+    html += '<span style="color:var(--dim);font-size:10px;flex-shrink:0">' + (labels[i]||'') + '</span>';
+    html += '<span>' + e(action) + '</span>';
+    html += '<span style="color:var(--dim2);margin-left:auto;flex-shrink:0">→</span>';
+    html += '</button>';
+  });
+  html += '</div>';
+
+  html += '</div>'; // end fg-wrap
   canvas.innerHTML = html;
 
-  // Wire up Trinity card clicks via data attributes (avoids inline onclick quote issues)
+  // Wire up Next Action buttons via data-action (safe from quote escaping)
+  canvas.querySelectorAll('.fg-next-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      if (action) { showView('chat'); const inp = document.getElementById('chat-input'); if(inp){inp.value=action; document.getElementById('send-btn').click();} }
+    });
+  });
+
+  // Wire up Trinity agent clicks
   canvas.querySelectorAll('[data-trinity-idx]').forEach(card => {
     card.addEventListener('click', () => openTrinityPanel(parseInt(card.dataset.trinityIdx)));
   });
+
+  // Wire up ZeroClick impression tracking
+  canvas.querySelectorAll('[data-offer-id]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.offerId;
+      if (id) fetch(S + '/zeroclick/click?offer_id=' + encodeURIComponent(id), {method:'POST'}).catch(()=>{});
+    });
+  });
+
+  // Draw SVG connecting lines after layout is computed
+  requestAnimationFrame(() => _drawFlowLines(canvas));
+}
+
+function _drawFlowLines(canvas) {
+  // Remove old SVG if any
+  const old = canvas.querySelector('.fg-svg');
+  if (old) old.remove();
+
+  const cr = canvas.getBoundingClientRect();
+  const h = canvas.scrollHeight;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'fg-svg');
+  svg.setAttribute('style', 'position:absolute;top:0;left:0;width:100%;height:' + h + 'px;pointer-events:none;overflow:visible');
+
+  function nodeRect(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { top: r.top - cr.top + canvas.scrollTop, left: r.left - cr.left, bottom: r.bottom - cr.top + canvas.scrollTop, right: r.right - cr.left, cx: r.left - cr.left + r.width/2, cy_top: r.top - cr.top + canvas.scrollTop, cy_bot: r.bottom - cr.top + canvas.scrollTop };
+  }
+
+  function bezier(x1,y1,x2,y2,color,width) {
+    const my = (y1+y2)/2;
+    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d','M'+x1+','+y1+' C'+x1+','+(y1+(my-y1)*0.7)+' '+x2+','+(y2-(my-y1)*0.7)+' '+x2+','+y2);
+    p.setAttribute('stroke',color||'#333');
+    p.setAttribute('stroke-width',width||'1');
+    p.setAttribute('fill','none');
+    p.setAttribute('opacity','0.6');
+    svg.appendChild(p);
+  }
+
+  const goal    = nodeRect('fgn-goal');
+  const mkt     = nodeRect('fgn-mkt');
+  const exaN    = nodeRect('fgn-exa');
+  const apifyN  = nodeRect('fgn-apify');
+  const comp    = nodeRect('fgn-comp');
+  const audit   = nodeRect('fgn-audit');
+  const purchase= nodeRect('fgn-purchase');
+  const zc      = nodeRect('fgn-zc');
+  const trinity = nodeRect('fgn-trinity');
+  const exec    = nodeRect('fgn-exec');
+
+  // Goal → 3 branches
+  if (goal && mkt)    bezier(goal.cx, goal.cy_bot, mkt.cx,    mkt.cy_top,    '#553300', 1);
+  if (goal && exaN)   bezier(goal.cx, goal.cy_bot, exaN.cx,   exaN.cy_top,   '#553300', 1);
+  if (goal && apifyN) bezier(goal.cx, goal.cy_bot, apifyN.cx, apifyN.cy_top, '#553300', 1);
+
+  // 3 branches → Competitive Analysis
+  const nextNode = comp || audit;
+  if (nextNode) {
+    if (mkt)    bezier(mkt.cx,    mkt.cy_bot,    nextNode.cx, nextNode.cy_top, '#333', 1);
+    if (exaN)   bezier(exaN.cx,   exaN.cy_bot,   nextNode.cx, nextNode.cy_top, '#333', 1);
+    if (apifyN) bezier(apifyN.cx, apifyN.cy_bot, nextNode.cx, nextNode.cy_top, '#333', 1);
+  }
+
+  // Vertical chain: comp → audit → purchase → zc → trinity → exec
+  const chain = [comp, audit, purchase, zc, trinity, exec].filter(Boolean);
+  for (let i = 0; i < chain.length-1; i++) {
+    const col = (chain[i] === purchase || chain[i+1] === purchase) ? '#1a4a1a' : (chain[i+1] === zc) ? '#1a3a1a' : '#333';
+    bezier(chain[i].cx, chain[i].cy_bot, chain[i+1].cx, chain[i+1].cy_top, col, 1);
+  }
+
+  canvas.style.position = 'relative';
+  canvas.insertBefore(svg, canvas.firstChild);
 }
 
 // ── Business Dashboard ────────────────────────────────────────────────────────
@@ -1013,10 +1220,10 @@ function renderBizDashboard(data) {
   ]);
   html += '<div class="biz-next">';
   html += '<div class="biz-next-title">Next Actions — What should I do?</div>';
+  const bizLabels = ['(a)','(b)','(c)'];
   nextActions.forEach((action, i) => {
-    const labels = ['(a)', '(b)', '(c)'];
-    html += '<button class="biz-next-action" onclick="sendFromBiz(' + JSON.stringify(action) + ')">';
-    html += '<span style="color:var(--dim);font-size:10px">' + (labels[i]||'') + '</span>';
+    html += '<button class="biz-next-action" data-biz-action="' + e(action) + '">';
+    html += '<span style="color:var(--dim);font-size:10px">' + (bizLabels[i]||'') + '</span>';
     html += '<span>' + e(action) + '</span>';
     html += '<span style="color:var(--dim2);margin-left:auto">→</span>';
     html += '</button>';
@@ -1024,6 +1231,14 @@ function renderBizDashboard(data) {
   html += '</div>';
 
   canvas.innerHTML = html;
+
+  // Wire up next action buttons via data attribute (safe from quote escaping)
+  canvas.querySelectorAll('[data-biz-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.bizAction;
+      if (action) sendFromBiz(action);
+    });
+  });
 }
 
 function sendFromBiz(text) {

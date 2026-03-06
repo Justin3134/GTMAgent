@@ -1520,6 +1520,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                     "purchased": True,
                     "tx_hash": tx_hash,
                     "plan_id": plan_id,
+                    "agent_id": pick.get("agent_id", ""),
+                    "endpoint": pick.get("endpoint", ""),  # carry endpoint forward for execution step
                     "price_per_credit": price_per_credit,
                     "audit_score": score,
                     "roi_decision": pick.get("roi_decision", "BUY"),
