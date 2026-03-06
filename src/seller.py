@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.config import (
     NVM_PLAN_ID, NVM_AGENT_ID, SELLER_PORT,
     OPENAI_API_KEY, MODEL_ID, EXA_API_KEY, ZEROCLICK_API_KEY,
-    DEMO_MODE, get_payments,
+    DEMO_MODE, AUDIT_SERVICE_URL, get_payments,
 )
 from src.auditor import run_audit, run_compare, run_monitor
 from src import analytics as _analytics_mod
