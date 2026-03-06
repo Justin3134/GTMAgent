@@ -237,18 +237,22 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     </div>
   </header>
 
-  <!-- Flow View (hidden by default) -->
-  <div id="view-flow" style="display:none;grid-column:1;grid-row:2;overflow:auto;padding:24px 32px;background:var(--bg)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <div style="font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase">Workflow — last strategy run</div>
-      <div id="flow-key-status" style="font-size:9px;color:var(--dim2);letter-spacing:0.05em"></div>
-    </div>
-    <div id="flow-canvas" style="position:relative;min-height:500px;font-size:11px">
-      <div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>
-    </div>
-  </div>
+  <!-- Main content area — single grid cell shared by Chat and Flow views -->
+  <div style="grid-column:1;grid-row:2;position:relative;overflow:hidden">
 
-  <div id="view-chat" class="chat-panel" style="grid-column:1;grid-row:2">
+    <!-- Flow View (hidden by default) -->
+    <div id="view-flow" style="display:none;position:absolute;inset:0;overflow-y:auto;padding:24px 32px;background:var(--bg)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase">Workflow — last strategy run</div>
+        <div id="flow-key-status" style="font-size:9px;color:var(--dim2);letter-spacing:0.05em"></div>
+      </div>
+      <div id="flow-canvas" style="position:relative;min-height:500px;font-size:11px">
+        <div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>
+      </div>
+    </div>
+
+    <!-- Chat View -->
+    <div id="view-chat" class="chat-panel" style="position:absolute;inset:0">
     <div class="chat-messages" id="messages">
       <div class="welcome">
         <strong>AgentAudit</strong> — Autonomous Business Intelligence<br><br>
@@ -265,7 +269,8 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <input id="chat-input" placeholder="Ask AgentAudit..." autocomplete="off" />
       <button id="send-btn">Send</button>
     </div>
-  </div>
+    </div><!-- end view-chat -->
+  </div><!-- end content-area wrapper -->
 
   <div class="stats-panel">
 
@@ -321,14 +326,21 @@ function showView(v) {
   if (v === 'flow') {
     chat.style.display = 'none';
     flow.style.display = 'block';
+    flow.style.zIndex = '1';
     btnFlow.style.background = 'var(--fg)';
     btnFlow.style.color = 'var(--bg)';
     btnFlow.style.borderColor = 'var(--fg)';
     btnChat.style.background = 'transparent';
     btnChat.style.color = 'var(--dim)';
     btnChat.style.borderColor = 'var(--dim2)';
-    // Refresh key status then render so "no key" vs "key active" is accurate
-    _loadKeyStatus().then(() => renderFlowView(lastStrategyData));
+    // Refresh key status then render
+    _loadKeyStatus().then(() => {
+      try { renderFlowView(lastStrategyData); }
+      catch(err) {
+        const cv = document.getElementById('flow-canvas');
+        if (cv) cv.innerHTML = '<div style="color:var(--red);padding:20px">Flow render error: ' + err.message + '</div>';
+      }
+    });
   } else {
     flow.style.display = 'none';
     chat.style.display = 'flex';
