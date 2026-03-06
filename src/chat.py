@@ -648,13 +648,29 @@ def _ensure_plan_subscribed(plan_id: str) -> dict:
         logger.info(f"[nvm] Ordering plan {plan_id[:20]}… (free={is_free}, price=${price_per_credit}/credit)")
         try:
             order = payments.plans.order_plan(plan_id)
-            tx_hash = order.get("txHash", "") if isinstance(order, dict) else ""
-            success = order.get("success", False) if isinstance(order, dict) else False
+            logger.info(f"[nvm] order_plan raw result: type={type(order).__name__}, value={str(order)[:200]}")
+            if isinstance(order, dict):
+                tx_hash = order.get("txHash", "") or order.get("tx_hash", "") or order.get("agreementId", "")
+                success = order.get("success", False)
+                if not success and tx_hash:
+                    success = True
+            elif isinstance(order, str):
+                tx_hash = order
+                success = bool(order)
+            elif hasattr(order, "success"):
+                tx_hash = getattr(order, "txHash", "") or getattr(order, "tx_hash", "") or getattr(order, "agreementId", "")
+                success = getattr(order, "success", False)
+                if not success and tx_hash:
+                    success = True
+            else:
+                tx_hash = str(order)[:64] if order else ""
+                success = bool(order)
             if success:
                 _analytics_mod.record_tool_call("nevermined", "ok")
                 logger.info(f"[nvm] Plan ordered — txHash: {tx_hash[:20]}…")
                 return {"subscribed": True, "was_new": True, "tx_hash": tx_hash, "is_free": is_free}
-            return {"subscribed": False, "error": f"order_plan returned: {order}"}
+            logger.warning(f"[nvm] order_plan returned success=False for plan {plan_id[:20]}…: {str(order)[:150]}")
+            return {"subscribed": False, "error": f"order_plan returned: {str(order)[:100]}"}
         except Exception as order_err:
             err_str = str(order_err)
             # Distinguish infrastructure errors (NVM sandbox 500) from real errors
@@ -1438,12 +1454,16 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     live_candidates = []
     async def _probe(entry: dict) -> bool:
         ep = _resolve_target_url(entry.get("endpoint_url", ""))
+        body_field = entry.get("body_field", "")
+        if body_field:
+            body = {body_field: "ping", "query": "ping"}
+        else:
+            body = {"query": "ping", "message": "ping"}
         try:
             async with httpx.AsyncClient(timeout=5.0) as c:
-                r = await c.post(ep, json={"query": "ping"}, headers={"Content-Type": "application/json"})
-                # 200 = open/free endpoint, 402 = paywall (alive and purchasable)
-                # 404/500/502/503/504 = broken/dead endpoint, don't buy
-                return r.status_code in (200, 201, 402, 403)
+                r = await c.post(ep, json=body, headers={"Content-Type": "application/json"})
+                # 200 = open/free, 402 = paywall (alive+purchasable), 422 = alive but wrong body format
+                return r.status_code in (200, 201, 402, 403, 422)
         except Exception:
             return False
 
@@ -1457,6 +1477,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         c.get("team_name", ""): alive
         for c, alive in zip(candidates, probe_results)
     }
+    logger.info(f"[liveness] {len(live_candidates)}/{len(candidates)} alive: {report['liveness']}")
 
     # --- Step 3: Audit top live candidates (up to 3 for speed) ---
     report["steps"].append("audit_candidates")
@@ -1632,12 +1653,14 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             })
             continue
 
+        logger.info(f"[roi] {roi_decision} {team}: score={score:.2f}, subscribed={already_subscribed}, balance={existing_balance}, plan={plan_id[:20]}…")
         purchase_queue.append(pick)
         seen_teams_for_purchase.add(team)
 
         if len(purchase_queue) >= MAX_PURCHASES:
             break
 
+    logger.info(f"[purchase] Queue: {len(purchase_queue)} items — {[p.get('team','?') for p in purchase_queue]}")
     # Ensure at least one repeat purchase for hackathon criteria
     # If all buys are new, add the top scorer as a repeat
     has_repeat = any(p.get("roi_decision") in ("REPEAT_BUY",) for p in purchase_queue)
@@ -1657,6 +1680,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         is_repeat = pick.get("repeat_purchase", False)
 
         if not payments_client or not plan_id:
+            logger.warning(f"[purchase] SKIP {team}: payments_client={bool(payments_client)}, plan_id={bool(plan_id)}")
             return {"team": team, "purchased": False, "error": "no payments client or plan_id"}
 
         try:
@@ -1665,10 +1689,12 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             already_subscribed = getattr(bal, "is_subscriber", False)
             current_balance = getattr(bal, "balance", 0)
             price_per_credit = getattr(bal, "price_per_credit", 0)
+            logger.info(f"[purchase] {team}: subscribed={already_subscribed}, balance={current_balance}, price_per_credit={price_per_credit}")
 
             # ROI logic: for repeat purchase, allow re-buy even if already subscribed
             # (shows repeat purchase behavior — each order_plan = new blockchain tx)
             if is_repeat and already_subscribed and current_balance > 200:
+                logger.info(f"[purchase] HOLD {team}: repeat buy skipped (balance {current_balance} > 200)")
                 return {
                     "team": team, "purchased": False, "skipped": True,
                     "reason": f"Repeat buy skipped — balance {current_balance} credits (> 200 threshold)",
@@ -1676,11 +1702,30 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 }
 
             # Execute the plan purchase (real blockchain tx)
+            logger.info(f"[purchase] Calling order_plan({plan_id[:20]}…) for {team}")
             order = payments_client.plans.order_plan(plan_id)
-            tx_hash = order.get("txHash", "") if isinstance(order, dict) else ""
-            success = order.get("success", False) if isinstance(order, dict) else False
+            logger.info(f"[purchase] order_plan result for {team}: type={type(order).__name__}, value={str(order)[:200]}")
+
+            # Handle various return types from the SDK
+            if isinstance(order, dict):
+                tx_hash = order.get("txHash", "") or order.get("tx_hash", "") or order.get("agreementId", "")
+                success = order.get("success", False)
+                if not success and tx_hash:
+                    success = True
+            elif isinstance(order, str):
+                tx_hash = order
+                success = bool(order)
+            elif hasattr(order, "success"):
+                tx_hash = getattr(order, "txHash", "") or getattr(order, "tx_hash", "") or getattr(order, "agreementId", "")
+                success = getattr(order, "success", False)
+                if not success and tx_hash:
+                    success = True
+            else:
+                tx_hash = str(order)[:64] if order else ""
+                success = bool(order)
 
             if success:
+                logger.info(f"[purchase] SUCCESS {team}: tx_hash={tx_hash[:30]}…, plan={plan_id[:20]}…")
                 _analytics_mod.record_tool_call("nevermined", "ok")
                 _analytics_mod.record_purchase(
                     vendor=team, endpoint=pick.get("endpoint", ""),
@@ -1717,10 +1762,12 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                     "body_field": pick.get("body_field", ""),
                 }
             else:
-                return {"team": team, "purchased": False, "error": f"order_plan returned: {order}"}
+                logger.warning(f"[purchase] FAILED {team}: order_plan returned success=False, raw={str(order)[:200]}")
+                return {"team": team, "purchased": False, "error": f"order_plan returned: {str(order)[:100]}"}
 
         except Exception as e:
             err = str(e)
+            logger.error(f"[purchase] ERROR {team}: {err[:200]}")
             if "500" in err or "502" in err or "503" in err:
                 return {"team": team, "purchased": False,
                         "error": "Nevermined sandbox temporarily unavailable (HTTP 500) — retry in a few minutes"}
@@ -2367,6 +2414,13 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                 result = await _exec_tool(fn_name, fn_args)
 
                 # After orchestration: emit final agent states based on actual result
+                _mindra_id_map = {
+                    "web_search": "mindra-web",
+                    "linkedin": "mindra-linkedin",
+                    "google": "mindra-google",
+                    "github": "mindra-github",
+                    "content": "mindra-content",
+                }
                 if fn_name in ("execute_business_strategy", "parallel_agents"):
                     try:
                         r = json.loads(result)
@@ -2377,15 +2431,10 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
 
                         # Mindra parallel agent statuses
                         mindra_agents = r.get("mindra_agents", {})
-                        _agent_id_map = {
-                            "web_search": "mindra-web",
-                            "linkedin": "mindra-linkedin",
-                            "google": "mindra-google",
-                            "github": "mindra-github",
-                            "content": "mindra-content",
-                        }
+                        _mindra_emitted = False
                         if mindra_agents:
-                            for _mid, _sse_id in _agent_id_map.items():
+                            _mindra_emitted = True
+                            for _mid, _sse_id in _mindra_id_map.items():
                                 _ma = mindra_agents.get(_mid, {})
                                 _ma_status = _ma.get("status", "unknown")
                                 _ma_ok = _ma_status == "completed"
@@ -2395,6 +2444,10 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                                     _msg = f"{_ma_tools} tools — {_ma_answer_len} chars"
                                 elif _ma_status == "error":
                                     _msg = _ma.get("answer", "error")[:20] or "failed"
+                                elif _ma_status == "timeout":
+                                    _msg = "timed out"
+                                elif _ma_status == "unavailable":
+                                    _msg = "unavailable"
                                 else:
                                     _msg = _ma_status
                                 yield {"event": "tool_step", "data": {
@@ -2402,10 +2455,12 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                                     "status": "done" if _ma_ok else "failed",
                                     "msg": _msg,
                                 }}
-                        elif r.get("orchestrator") == "mindra":
-                            for _sse_id in _agent_id_map.values():
+                        elif mindra_active or r.get("orchestrator") == "mindra":
+                            _mindra_emitted = True
+                            _mindra_err = r.get("mindra_status", r.get("error", "no result"))
+                            for _sse_id in _mindra_id_map.values():
                                 yield {"event": "tool_step", "data": {
-                                    "agent": _sse_id, "status": "failed", "msg": "no result",
+                                    "agent": _sse_id, "status": "failed", "msg": str(_mindra_err)[:22],
                                 }}
 
                         # TrinityOS agent status
@@ -2422,8 +2477,13 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                         yield {"event": "tool_step", "data": {"agent": "openai",     "status": "done" if n_audited else "idle", "msg": f"{n_audited} audited"}}
                         nvm_bought = n_bought or n_agents
                         yield {"event": "tool_step", "data": {"agent": "nevermined", "status": "done" if nvm_bought else "failed", "msg": f"{nvm_bought} purchased"}}
-                    except Exception:
-                        pass
+                    except Exception as _orch_err:
+                        logger.warning(f"[Orchestration] Post-tool event emission failed: {_orch_err}")
+                        if mindra_active:
+                            for _sse_id in _mindra_id_map.values():
+                                yield {"event": "tool_step", "data": {
+                                    "agent": _sse_id, "status": "failed", "msg": "error",
+                                }}
 
                 # --- ZeroClick: detect ads in audit/strategy/buy results ---
                 try:

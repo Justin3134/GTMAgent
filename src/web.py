@@ -881,6 +881,9 @@ function renderFlowView(data) {
   const purchases = (data.purchases||[]).filter(p => p.purchased);
   const caps    = data.goal_capabilities || [];
   const ad      = data.zeroclick_ad || null;
+  const mindraAgents = data.mindra_agents || {};
+  const mindraGtm    = data.mindra_gtm_synthesis || '';
+  const hasMindra    = Object.keys(mindraAgents).length > 0 || data.orchestrator === 'mindra';
 
   let html = '<div class="fg-wrap" style="position:relative">';
 
@@ -890,6 +893,42 @@ function renderFlowView(data) {
   html += '<div class="fg-goal-title">' + e(data.goal||'') + '</div>';
   if (caps.length) html += '<div class="fg-goal-caps">' + caps.slice(0,4).map(e).join(' · ') + '</div>';
   html += '</div>';
+
+  // ── MINDRA GTM — 5 parallel agents ─────────────────────────────────────────
+  if (hasMindra) {
+    const mindraIds = {web_search:'Web Search', linkedin:'LinkedIn', google:'Google Workspace', github:'GitHub', content:'Content Creator'};
+    const mindraSucc = Object.values(mindraAgents).filter(a => a.status === 'completed' && (a.answer||'').length > 0).length;
+    const mindraTotal = Object.keys(mindraAgents).length || 5;
+    html += '<div class="fg-stage" id="fgn-mindra" style="margin-top:44px;border-color:#1a3044">';
+    html += '<div class="fg-stage-lbl"><span class="fg-step-n" style="background:#0a1a2a;color:#6ecbf5">M</span> Mindra GTM Agents — ' + mindraSucc + '/' + mindraTotal + ' succeeded</div>';
+    html += '<div class="fg-stage-body">';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px">';
+    Object.entries(mindraIds).forEach(([mid, label]) => {
+      const ma = mindraAgents[mid] || {};
+      const ok = ma.status === 'completed' && (ma.answer||'').length > 0;
+      const errored = ma.status === 'error' || ma.status === 'timeout' || ma.status === 'unavailable';
+      const borderCol = ok ? '#1a4a1a' : errored ? '#4a1a1a' : '#1a3044';
+      const statusCol = ok ? 'var(--green)' : errored ? 'var(--red)' : '#6ecbf5';
+      const statusTxt = ok ? 'completed' : (ma.status || 'running');
+      const tools = ma.tool_count || 0;
+      html += '<div class="fg-mini-card" style="border-color:' + borderCol + '">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<div class="fg-mini-name" style="color:#6ecbf5">' + e(label) + '</div>';
+      html += '<div style="font-size:9px;font-weight:500;color:' + statusCol + '">' + e(statusTxt) + '</div>';
+      html += '</div>';
+      if (ok && tools > 0) html += '<div class="fg-mini-meta">' + tools + ' tools · ' + (ma.answer||'').length + ' chars</div>';
+      else if (ma.answer) html += '<div class="fg-mini-meta">' + e((ma.answer||'').substring(0,55)) + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    if (mindraGtm) {
+      html += '<div style="margin-top:10px;padding:8px 10px;background:#050d14;border:1px solid #1a3044;border-radius:4px">';
+      html += '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#6ecbf5;margin-bottom:4px">GTM Strategy Synthesis</div>';
+      html += '<div style="font-size:10px;color:#bbb;line-height:1.5;white-space:pre-wrap">' + e(mindraGtm.substring(0, 600)) + '</div>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
 
   // ── DISCOVER — 3 parallel branches ───────────────────────────────────────────
   html += '<div style="margin-top:44px;position:relative;z-index:2" id="fgn-discover">';
@@ -1105,18 +1144,23 @@ function _drawFlowLines(canvas) {
     svg.appendChild(p);
   }
 
-  const goal  = nr('fgn-goal');
-  const disc  = nr('fgn-discover');
-  const mkt   = nr('fgn-mkt');
-  const exaN  = nr('fgn-exa');
-  const api   = nr('fgn-apify');
-  const audit = nr('fgn-audit');
-  const purch = nr('fgn-purchase');
+  const goal   = nr('fgn-goal');
+  const mindra = nr('fgn-mindra');
+  const disc   = nr('fgn-discover');
+  const mkt    = nr('fgn-mkt');
+  const exaN   = nr('fgn-exa');
+  const api    = nr('fgn-apify');
+  const audit  = nr('fgn-audit');
+  const purch  = nr('fgn-purchase');
 
-  // Goal → 3 discovery columns (fan out)
-  if (goal && mkt)   line(goal.cx, goal.cy_bot, mkt.cx,   mkt.cy_top,   '#553300', 1.5);
-  if (goal && exaN)  line(goal.cx, goal.cy_bot, exaN.cx,  exaN.cy_top,  '#553300', 1.5);
-  if (goal && api)   line(goal.cx, goal.cy_bot, api.cx,   api.cy_top,   '#553300', 1.5);
+  // Goal → Mindra (if present)
+  if (goal && mindra) line(goal.cx, goal.cy_bot, mindra.cx, mindra.cy_top, '#1a3044', 1.5);
+
+  // Mindra → Discover columns (or Goal → Discover if no Mindra)
+  const fanSrc = mindra || goal;
+  if (fanSrc && mkt)   line(fanSrc.cx, fanSrc.cy_bot, mkt.cx,   mkt.cy_top,   '#553300', 1.5);
+  if (fanSrc && exaN)  line(fanSrc.cx, fanSrc.cy_bot, exaN.cx,  exaN.cy_top,  '#553300', 1.5);
+  if (fanSrc && api)   line(fanSrc.cx, fanSrc.cy_bot, api.cx,   api.cy_top,   '#553300', 1.5);
 
   // 3 columns → Audit (fan in)
   if (audit) {
@@ -1605,6 +1649,29 @@ function renderAdCard(ad, score) {
 // renderOrchestration: update the 4 permanent tool boxes with final results
 function renderOrchestration(data) {
   if (!data) return;
+
+  // Mindra GTM agents
+  const mindraAgents = data.mindra_agents || {};
+  const mindraIdMap = {web_search:'mindra-web', linkedin:'mindra-linkedin', google:'mindra-google', github:'mindra-github', content:'mindra-content'};
+  let mindraOk = 0;
+  if (Object.keys(mindraAgents).length > 0) {
+    Object.entries(mindraIdMap).forEach(([mid, sseId]) => {
+      const ma = mindraAgents[mid] || {};
+      const ok = ma.status === 'completed' && (ma.answer||'').length > 0;
+      if (ok) mindraOk++;
+      const msg = ok ? (ma.tool_count||0)+' tools — '+(ma.answer||'').length+' chars'
+                  : ma.status === 'error' ? ((ma.answer||'error').substring(0,20)||'failed')
+                  : (ma.status||'unknown');
+      orchSetAgent(sseId, ok ? 'done' : 'failed', msg);
+    });
+  } else if (data.orchestrator === 'mindra' || data.mindra_status) {
+    Object.values(mindraIdMap).forEach(sseId => {
+      orchSetAgent(sseId, 'failed', data.mindra_status || 'no result');
+    });
+  }
+  window._mindraSucceeded = mindraOk;
+  const mse = document.getElementById('mindra-succeeded');
+  if (mse) mse.textContent = mindraOk + '/5';
 
   // Exa: only mark done if there are actual exa highlights
   const exaData = data.exa_research || {};

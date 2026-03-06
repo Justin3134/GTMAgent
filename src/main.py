@@ -99,6 +99,30 @@ async def _register_with_discovery():
             "planIds": [NVM_PLAN_ID] if NVM_PLAN_ID else [],
             "nvmAgentId": NVM_AGENT_ID,
             "pricing": {"perRequest": 1, "meteringUnit": "credits"},
+            "agentCardUrl": f"{RENDER_URL}/.well-known/agent.json",
+            "skills": [
+                {
+                    "id": "business_strategy",
+                    "name": "Business Strategy Generation",
+                    "description": "Send a business idea → full go-to-market strategy with marketplace search, audits, purchases, and competitive analysis",
+                    "tags": ["business", "strategy", "AI", "marketplace", "research"],
+                },
+                {
+                    "id": "quality_audit",
+                    "name": "AI Service Quality Audit",
+                    "description": "Provide an endpoint URL → comprehensive quality audit with latency, reliability, and BUY/WATCH/AVOID scoring",
+                    "tags": ["audit", "quality", "evaluation", "monitoring"],
+                },
+                {
+                    "id": "marketplace_discovery",
+                    "name": "Marketplace Service Discovery",
+                    "description": "Discover and compare AI services on the Nevermined marketplace with pricing and quality scores",
+                    "tags": ["marketplace", "discovery", "comparison"],
+                },
+            ],
+            "endpoints": [
+                {"method": "POST", "path": "/data", "credits": 1, "description": "Business idea → full strategy pipeline, or endpoint_url → quality audit"},
+            ],
         }
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(
@@ -206,6 +230,94 @@ async def zeroclick_click(offer_id: str = ""):
         from src import analytics as _analytics_mod
         _analytics_mod.record_tool_call("zeroclick", "ok")
     return {"ok": True}
+
+
+@app.get("/.well-known/agent.json")
+async def agent_card():
+    """A2A Agent Card — exposes skills so buyers can discover and use this agent."""
+    from src.config import NVM_PLAN_ID, NVM_AGENT_ID
+    return {
+        "name": "GTMAgent",
+        "description": (
+            "Autonomous Business Intelligence Agent. Describe your business idea "
+            "and GTMAgent searches the Nevermined marketplace + Apify, audits "
+            "candidates with OpenAI + Exa, purchases the best services via x402, "
+            "and delivers a full actionable business strategy with ROI analysis."
+        ),
+        "url": RENDER_URL,
+        "version": "2.0.0",
+        "defaultInputModes": ["application/json", "text/plain"],
+        "defaultOutputModes": ["application/json"],
+        "capabilities": {
+            "streaming": False,
+            "pushNotifications": False,
+            "extensions": [
+                {
+                    "uri": "urn:nevermined:payment",
+                    "description": "Fixed cost per request — 1 credit",
+                    "required": True,
+                    "params": {
+                        "paymentType": "fixed",
+                        "credits": 1,
+                        "planId": NVM_PLAN_ID,
+                        "agentId": NVM_AGENT_ID,
+                    },
+                }
+            ],
+        },
+        "skills": [
+            {
+                "id": "business_strategy",
+                "name": "Business Strategy Generation",
+                "description": (
+                    "Send a business idea and receive a full go-to-market strategy. "
+                    "GTMAgent searches the Nevermined marketplace and Apify for relevant "
+                    "AI services, audits their quality, purchases the best ones, and "
+                    "synthesizes an actionable business strategy with competitive analysis."
+                ),
+                "tags": ["business", "strategy", "AI", "marketplace", "research", "go-to-market"],
+                "examples": [
+                    "I want to build a fintech AI assistant",
+                    "Help me find the best AI tools for social media marketing",
+                    "Start a SaaS business for automated customer support",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "quality_audit",
+                "name": "AI Service Quality Audit",
+                "description": (
+                    "Provide an endpoint URL and GTMAgent will perform a comprehensive "
+                    "quality audit — testing latency, response quality, reliability, "
+                    "and returning a scored evaluation with a BUY/WATCH/AVOID recommendation."
+                ),
+                "tags": ["audit", "quality", "evaluation", "monitoring", "scoring"],
+                "examples": [
+                    "Audit this service: https://some-agent.example.com",
+                    "Test the quality of https://my-ai-service.com",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "marketplace_discovery",
+                "name": "Marketplace Service Discovery",
+                "description": (
+                    "Discover and compare AI services available on the Nevermined "
+                    "marketplace. Returns ranked results with pricing, categories, "
+                    "and quality scores."
+                ),
+                "tags": ["marketplace", "discovery", "comparison", "nevermined"],
+                "examples": [
+                    "What AI services are available for content generation?",
+                    "Find me DeFi agents on the marketplace",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
