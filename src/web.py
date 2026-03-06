@@ -612,8 +612,8 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div class="agent-box idle" id="orch-apify"      ><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-openai"     ><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-nevermined" ><div class="agent-box-name">Nevermined</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-trinity"    ><div class="agent-box-name" style="color:var(--green)">▲ Trinity: Nexus</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-social"     ><div class="agent-box-name" style="color:var(--green)">▲ Trinity: Social</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-trinity"    ><div class="agent-box-name" style="color:var(--green)">▲ TrinityOS: Nexus</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-social"     ><div class="agent-box-name" style="color:var(--green)">▲ TrinityOS: Social</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
     </div>
     <div class="divider"></div>
 
@@ -642,7 +642,8 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     <div class="divider"></div>
 
     <div class="section-label">Mindra <span style="font-size:9px;letter-spacing:0;color:#6ecbf5" id="mindra-status">ready</span></div>
-    <div class="stat-row"><span class="stat-key">workflows run</span><span class="stat-val" id="mindra-calls">0</span></div>
+    <div style="font-size:9px;color:var(--dim2);margin-bottom:4px">Seamless orchestration backbone</div>
+    <div class="stat-row"><span class="stat-key">orchestrations</span><span class="stat-val" id="mindra-calls">0</span></div>
     <div class="stat-row"><span class="stat-key">self-healing</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
     <div class="stat-row"><span class="stat-key">anomaly detection</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
   </div>
@@ -1057,6 +1058,7 @@ function renderBizDashboard(data) {
   const realOuts  = (data.business_outputs || []).filter(b => b.status === 'ok' && (b.content||'').length > 20);
   const execSynth = data.execution_synthesis || '';
   const trinity   = data.trinity_plan || [];
+  const trinityAgents = data.trinity_agents || [];
   const tmplColors = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
 
   let html = '';
@@ -1080,6 +1082,7 @@ function renderBizDashboard(data) {
       const tri = trinity[idx] || {};
       const tplKey = (tri.template||'').toLowerCase();
       const accentCol = tmplColors[tplKey] || '#334455';
+      const isTrinity = (p.endpoint||'').includes('abilityai.dev');
 
       const isProcessing = !out || !out.content;
       html += '<div class="biz-agent-card ' + (tplKey||'') + (isProcessing ? ' processing' : '') + '" style="border-color:' + accentCol + '20;--accent:' + accentCol + '">';
@@ -1088,23 +1091,24 @@ function renderBizDashboard(data) {
       // Card header
       html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
       html += '<div>';
-      html += '<div class="biz-agent-name">' + e(p.team||'') + '</div>';
-      html += '<div class="biz-agent-role">' + (tri.template ? e(tri.template) + ' · ' : '') + e((p.endpoint||'').replace('https://','').split('/')[0].substring(0,28)) + '</div>';
+      html += '<div class="biz-agent-name">' + (isTrinity ? '▲ ' : '') + e(p.team||'') + '</div>';
+      html += '<div class="biz-agent-role">' + (isTrinity ? 'TrinityOS · ' : '') + e((p.endpoint||'').replace('https://','').split('/')[0].substring(0,28)) + '</div>';
       html += '</div>';
       const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
       html += '<span style="font-size:8px;padding:2px 6px;border-radius:2px;' + badge + ';flex-shrink:0">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
       html += '</div>';
 
-      // Agent output or task
+      // Agent output — real data from TrinityOS or marketplace
       if (out && out.content) {
-        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>Live response</div>';
+        const srcLabel = isTrinity ? 'TrinityOS live' : 'Live response';
+        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + srcLabel + '</div>';
         html += '<div class="biz-agent-output">' + e(out.content.substring(0,400)).replace(/\\n/g,'<br>') + '</div>';
-      } else if (tri.task) {
-        html += '<div class="biz-processing-label"><span class="spinner"></span>Processing task...</div>';
-        html += '<div class="biz-agent-output loading">' + e(tri.task.substring(0,200)) + '</div>';
+      } else if (tri.live_output) {
+        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>TrinityOS live</div>';
+        html += '<div class="biz-agent-output">' + e(tri.live_output.substring(0,400)).replace(/\\n/g,'<br>') + '</div>';
       } else {
-        html += '<div class="biz-processing-label"><span class="spinner"></span>Initializing agent...</div>';
-        html += '<div class="biz-agent-output loading">Connecting to agent — waiting for response...</div>';
+        const failMsg = tri.status === 'error' ? 'Agent error — sandbox may be unstable' : 'Connecting to agent...';
+        html += '<div class="biz-processing-label"><span class="spinner"></span>' + failMsg + '</div>';
       }
 
       // Transaction line
@@ -1130,9 +1134,26 @@ function renderBizDashboard(data) {
     html += '</div><div style="height:16px"></div>'; // biz-grid
   }
 
+  // ── TRINITYOS AGENTS (called separately from purchases) ────────────────────
+  const triResponded = trinityAgents.filter(t => t.status === 'ok' && (t.content||'').length > 10);
+  if (triResponded.length > 0) {
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px">▲ TrinityOS Agent Intelligence</div>';
+    html += '<div class="biz-grid">';
+    triResponded.forEach(t => {
+      html += '<div class="biz-agent-card" style="border-color:#1a3a1a">';
+      html += '<div style="height:2px;background:var(--green);border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
+      html += '<div class="biz-agent-name">▲ ' + e(t.agent||'') + '</div>';
+      html += '<div class="biz-agent-role">TrinityOS · ' + e((t.endpoint||'').replace('https://','').split('/')[0].substring(0,28)) + '</div>';
+      html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin:8px 0 5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>Live from TrinityOS</div>';
+      html += '<div class="biz-agent-output">' + e((t.content||'').substring(0,500)).replace(/\\n/g,'<br>') + '</div>';
+      html += '</div>';
+    });
+    html += '</div><div style="height:16px"></div>';
+  }
+
   // ── EXECUTION SYNTHESIS ──────────────────────────────────────────────────────
   if (execSynth) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Strategy — OpenAI synthesis of purchased agents</div>';
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Strategy — synthesized from all agents</div>';
     const synthLinesB = execSynth.split('\\n').filter(l => l.trim().length > 0);
     const acols2 = ['#334499','#993344','#449933','#996633'];
     const synthSecsB = [];
