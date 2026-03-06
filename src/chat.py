@@ -148,11 +148,11 @@ You are AgentAudit — an Autonomous Business Intelligence Agent that acts like 
 
 ## After execute_business_strategy completes
 
-Present results as a business advisor would. For EACH service found:
-1. State its name and what it does
-2. Explain **specifically** why it matches the user's goal (e.g. "DataForge Labs is relevant because your fintech AI assistant needs real-time DeFi protocol metrics")
-3. State its audit score if available, and your BUY/WATCH/AVOID decision with reasoning
-4. Show what you purchased and what data you got back from that service
+Present results as a business advisor would:
+1. **Nevermined marketplace results** — for EACH service: state its name, why it matches the goal, audit score, BUY/WATCH/AVOID decision, and what the purchase returned
+2. **Apify actors found** — ALWAYS mention the `apify_actors` list if non-empty. Say "Apify Store also surfaced X tools: [list names and descriptions]". These are complementary web-scraping and AI tools.
+3. **Competitive analysis** — the result includes a `competitive_analysis` field: ALWAYS quote it verbatim as a section titled "Competitive Analysis". Also compare the top candidates head-to-head: latency, quality score, price per call
+4. **Summary** — state total credits spent, how many teams purchased from, and ROI verdict
 
 ## After search_marketplace completes
 
@@ -532,7 +532,19 @@ def _ensure_plan_subscribed(plan_id: str) -> dict:
             return {"subscribed": True, "was_new": False, "balance": balance, "is_free": is_free}
 
         # Not subscribed — try order_plan (works for free plans and funded wallets)
-        logger.info(f"[nvm] Ordering plan {plan_id[:20]}… (free={is_free})")
+        # Guard: skip auto-subscription for plans costing >$0.10/credit to avoid burning wallet
+        MAX_AUTO_SUBSCRIBE_PRICE = 0.10
+        price_per_credit = getattr(bal, "price_per_credit", 0)
+        if float(price_per_credit) > MAX_AUTO_SUBSCRIBE_PRICE:
+            checkout_url = f"https://nevermined.app/checkout/{plan_id}"
+            logger.info(f"[nvm] Skipping auto-subscribe for expensive plan (${price_per_credit}/credit). Checkout: {checkout_url}")
+            return {
+                "subscribed": False,
+                "is_free": False,
+                "checkout_url": checkout_url,
+                "error": f"Plan costs ${price_per_credit}/credit (>${MAX_AUTO_SUBSCRIBE_PRICE} limit). Subscribe manually: {checkout_url}",
+            }
+        logger.info(f"[nvm] Ordering plan {plan_id[:20]}… (free={is_free}, price=${price_per_credit})")
         try:
             order = payments.plans.order_plan(plan_id)
             tx_hash = order.get("txHash", "") if isinstance(order, dict) else ""
@@ -543,7 +555,6 @@ def _ensure_plan_subscribed(plan_id: str) -> dict:
                 return {"subscribed": True, "was_new": True, "tx_hash": tx_hash, "is_free": is_free}
             return {"subscribed": False, "error": f"order_plan returned: {order}"}
         except Exception as order_err:
-            # Paid plan with no crypto — return fiat checkout URL for manual purchase
             err_str = str(order_err)
             if not is_free:
                 checkout_url = f"https://nevermined.app/checkout/{plan_id}"
@@ -1205,6 +1216,31 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     scored.sort(key=lambda x: x.get("overall_score", 0), reverse=True)
     report["audit_scores"] = scored
+
+    # --- Competitive analysis: compare top services head-to-head ---
+    if len(scored) >= 2 and OPENAI_API_KEY:
+        try:
+            top_n = scored[:4]
+            comp_rows = "\n".join(
+                f"- {s['team']}: score={s.get('overall_score',0):.2f}, latency={s.get('latency_ms',9999):.0f}ms, quality={s.get('quality',0):.2f}, recommendation={s.get('recommendation','?')}"
+                for s in top_n
+            )
+            comp_prompt = (
+                f"You are a business analyst. Compare these AI services for the goal: '{goal}'\n\n{comp_rows}\n\n"
+                "In 3-4 sentences: which is the best pick and why? Mention trade-offs (speed vs quality vs price). "
+                "Be specific and direct. No bullet points."
+            )
+            _comp_client = OpenAI(api_key=OPENAI_API_KEY)
+            _comp_resp = _comp_client.chat.completions.create(
+                model=MODEL_ID,
+                messages=[{"role": "user", "content": comp_prompt}],
+                temperature=0.2,
+                max_tokens=200,
+            )
+            report["competitive_analysis"] = _comp_resp.choices[0].message.content.strip()
+            _analytics_mod.record_tool_call("openai", "ok")
+        except Exception:
+            pass
 
     # --- ZeroClick: attach a sponsored ad to the top-scoring result ---
     if scored and scored[0].get("overall_score", 0) > 0.55:

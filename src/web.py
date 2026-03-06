@@ -620,13 +620,11 @@ function renderStrategyCard(data) {
       html += '<div style="margin-top:4px">· <span style="color:var(--fg)">' + escHtml(p.team||'Team') + '</span> — ';
       html += '<a href="' + escHtml(p.url) + '" target="_blank" style="color:var(--orange);text-decoration:none">checkout → nevermined.app</a></div>';
     });
-    html += '<div style="margin-top:6px;font-size:10px;color:var(--dim)">Log in as tradingancient@gmail.com · card: 4242 4242 4242 4242 · any expiry/CVC</div>';
+    html += '<div style="margin-top:6px;font-size:10px;color:var(--dim)">Log in as justin.07823@gmail.com · card: 4242 4242 4242 4242 · any expiry/CVC</div>';
     html += '</div>';
   }
 
   html += '</div>';
-  // Append ZeroClick sponsored ad if the strategy result includes one
-  if (data.zeroclick_ad) html += renderAdCard(data.zeroclick_ad, roi.top_score || 0);
   return html;
 }
 
@@ -720,8 +718,7 @@ async function sendMessage() {
               scrollDown();
             }
             else if (eventType === 'zeroclick_ad') {
-              const adHtml = renderAdCard(d.ad, d.audit_score);
-              if (adHtml) auditCards += adHtml;
+              // Only update sidebar — ad card in chat is rendered once via tool_result
               const ad = d.ad;
               if (ad) {
                 document.getElementById('zc-live-ad').style.display = 'block';
@@ -781,11 +778,10 @@ async function sendMessage() {
               if (r && typeof r === 'object' && r.goal && r.steps) {
                 auditCards += renderStrategyCard(r);
                 renderOrchestration(r);
-                // Show ZeroClick ad from strategy if present
+                // ZeroClick ad — render once in chat, update sidebar
                 if (r.zeroclick_ad) {
-                  const adHtml = renderAdCard(r.zeroclick_ad, r.roi_analysis && r.roi_analysis.top_score || 0);
-                  if (adHtml) auditCards += adHtml;
                   const ad = r.zeroclick_ad;
+                  auditCards += renderAdCard(ad, r.roi_analysis && r.roi_analysis.top_score || 0);
                   document.getElementById('zc-live-ad').style.display = 'block';
                   document.getElementById('zc-ad-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
                   document.getElementById('zc-ad-msg').textContent = (ad.message || '').substring(0, 120);
