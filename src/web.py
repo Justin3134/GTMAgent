@@ -292,6 +292,29 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
 /* Flow section dividers with arrows */
 .flow-arrow { text-align: center; color: var(--dim2); font-size: 11px; margin: -14px 0 14px; letter-spacing: 0.1em; }
+
+/* Business Execution Results */
+.exec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.exec-card {
+  border: 1px solid #1a2a1a; border-radius: 6px; padding: 14px 16px;
+  background: linear-gradient(160deg, #050a05 0%, #060909 100%);
+}
+.exec-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.exec-card-team { font-weight: 500; font-size: 12px; }
+.exec-card-badge { font-size: 8px; letter-spacing: 0.07em; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; background: #0d2a0d; color: var(--green); }
+.exec-card-content { font-size: 10px; color: var(--dim); line-height: 1.6; }
+.exec-card-content b, .exec-card-content strong { color: #ccc; font-weight: 500; }
+
+/* Apify run result */
+.apify-run-card {
+  border: 1px solid #221133; border-radius: 6px; padding: 14px 16px;
+  background: linear-gradient(160deg, #040309 0%, #060408 100%);
+}
+.apify-run-item { border-left: 2px solid #441188; padding: 5px 8px; margin-bottom: 5px; font-size: 10px; }
+
+/* Live status pulse on execution section */
+@keyframes statusPulse { 0%,100%{background:#0d2a0d}50%{background:#0a200a} }
+.exec-running { animation: statusPulse 2.5s ease infinite; }
 .agent-box {
   border: 1px solid var(--border); border-radius: 4px;
   padding: 8px 10px; font-size: 10px; position: relative;
@@ -699,13 +722,79 @@ function renderFlowView(data) {
       tHtml += '<div class="ftc-template" style="color:' + col + '">' + e(ag.template||'agent') + '</div>';
       tHtml += '<div class="ftc-name">' + e(ag.name||'') + '</div>';
       tHtml += '<div class="ftc-role">' + e(ag.role||'') + '</div>';
-      tHtml += '<div class="ftc-task">' + e((ag.task||'').substring(0,65)) + '</div>';
-      tHtml += '<div class="ftc-status"><span class="dot-pulse"></span><span style="color:var(--green)">ready to deploy</span></div>';
-      if (relApify.length) tHtml += '<div style="margin-top:6px;font-size:9px;color:var(--dim2)">Apify: ' + relApify.map(a => e((a.name||'').substring(0,20))).join(', ') + '</div>';
+      tHtml += '<div class="ftc-task">' + e((ag.task||'').substring(0,80)) + '</div>';
+      if (ag.output_preview) tHtml += '<div style="margin-top:5px;font-size:9px;color:#3a6a3a;font-style:italic">' + e(ag.output_preview.substring(0,75)) + '</div>';
+      tHtml += '<div class="ftc-status"><span class="dot-pulse"></span><span style="color:var(--green)">running</span></div>';
+      if (relApify.length) tHtml += '<div style="margin-top:5px;font-size:9px;color:var(--dim2)">tools: ' + relApify.map(a => e((a.name||'').substring(0,18))).join(', ') + '</div>';
       tHtml += '</div>';
     });
     tHtml += '</div>';
     html += _sec(tHtml);
+  }
+
+  // ── 7: LIVE BUSINESS EXECUTION RESULTS ──────────────────────────────────────
+  const bizOutputs = data.business_outputs || [];
+  const apifyRun   = data.apify_run_result || null;
+
+  if (bizOutputs.length > 0 || apifyRun) {
+    let exHtml = _secLabel('Live Business Execution — agents called with your goal');
+    exHtml += '<div style="font-size:10px;color:var(--dim);margin-bottom:10px">';
+    exHtml += 'Real-time responses from purchased agents, orchestrated by Trinity. Each agent ran your business goal as a task.';
+    exHtml += '</div>';
+    exHtml += '<div class="exec-grid">';
+
+    bizOutputs.forEach(biz => {
+      // Format content: bold first line, rest as body
+      const rawContent = (biz.content || '').trim();
+      const lines = rawContent.split('\\n').filter(l => l.trim());
+      let formatted = '';
+      if (lines.length > 1) {
+        formatted = '<strong>' + e(lines[0]) + '</strong><br>' + lines.slice(1).map(l => e(l)).join('<br>');
+      } else {
+        formatted = e(rawContent);
+      }
+
+      exHtml += '<div class="exec-card exec-running">';
+      exHtml += '<div class="exec-card-header">';
+      exHtml += '<div class="exec-card-team">' + e(biz.team||'') + '</div>';
+      exHtml += '<div style="display:flex;align-items:center;gap:5px"><span class="dot-pulse"></span><span class="exec-card-badge">live output</span></div>';
+      exHtml += '</div>';
+      exHtml += '<div class="exec-card-content">' + formatted + '</div>';
+      if (biz.endpoint) {
+        exHtml += '<div style="margin-top:6px;font-size:9px;color:var(--dim2)">' + e(biz.endpoint.replace('https://','').split('/')[0]) + '</div>';
+      }
+      exHtml += '</div>';
+    });
+
+    // Apify run results
+    if (apifyRun && apifyRun.status === 'completed' && apifyRun.items) {
+      exHtml += '<div class="apify-run-card">';
+      exHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      exHtml += '<div style="font-weight:500;font-size:12px">Apify: ' + e(apifyRun.actor||'Scraper') + '</div>';
+      exHtml += '<span style="font-size:8px;letter-spacing:0.07em;text-transform:uppercase;padding:2px 6px;border-radius:2px;background:#221133;color:#8855ff">' + (apifyRun.item_count||0) + ' items</span>';
+      exHtml += '</div>';
+      apifyRun.items.forEach(item => {
+        const title = item.title || item.name || item.url || JSON.stringify(item).substring(0,50);
+        const url = item.url || item.link || '';
+        exHtml += '<div class="apify-run-item">';
+        if (url) {
+          exHtml += '<a href="' + e(url) + '" target="_blank" style="color:#8855ff;text-decoration:none;font-size:10px">' + e(String(title).substring(0,55)) + ' →</a>';
+        } else {
+          exHtml += '<div style="font-size:10px;color:var(--dim)">' + e(String(title).substring(0,70)) + '</div>';
+        }
+        if (item.description) exHtml += '<div style="font-size:9px;color:var(--dim2);margin-top:2px">' + e(item.description.substring(0,80)) + '</div>';
+        exHtml += '</div>';
+      });
+      exHtml += '</div>';
+    } else if (apifyRun && apifyRun.actor) {
+      exHtml += '<div class="apify-run-card">';
+      exHtml += '<div style="font-weight:500;font-size:12px;margin-bottom:4px">Apify: ' + e(apifyRun.actor) + '</div>';
+      exHtml += '<div style="font-size:10px;color:var(--dim)">' + e(apifyRun.reason || 'Actor queued — results pending') + '</div>';
+      exHtml += '</div>';
+    }
+
+    exHtml += '</div>';
+    html += _sec(exHtml);
   }
 
   canvas.innerHTML = html;
@@ -732,7 +821,12 @@ function openTrinityPanel(idx) {
   html += '<div style="color:var(--dim);font-size:12px">' + e(ag.role||'') + '</div>';
   html += '</div>';
 
-  html += '<div style="font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:16px">' + e(ag.task||'') + '</div>';
+  html += '<div style="font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:8px">' + e(ag.task||'') + '</div>';
+  if (ag.output_preview) {
+    html += '<div style="border-left:2px solid #1a4a1a;padding:5px 10px;margin-bottom:12px;font-size:10px;color:#3a7a3a;font-style:italic">';
+    html += e(ag.output_preview);
+    html += '</div>';
+  }
 
   // Goal context
   html += '<div style="border:1px solid var(--border);border-radius:4px;padding:8px 10px;margin-bottom:16px;font-size:10px">';

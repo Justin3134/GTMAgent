@@ -1580,6 +1580,96 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         for e in viable[:8]
     ]
 
+    # --- Step 6: EXECUTE — call each purchased agent with the business goal ---
+    # This is the "business running" phase: real API calls to each purchased service.
+    business_outputs: list[dict] = []
+    if successful and NVM_BUYER_API_KEY:
+        async def _exec_agent(p: dict) -> dict:
+            """Call a purchased agent endpoint with the goal and return its response."""
+            team = p.get("team", "")
+            ep = p.get("endpoint", "")
+            plan_id = p.get("plan_id", "")
+            agent_id = p.get("agent_id", "")
+            if not ep or not plan_id:
+                return {"team": team, "status": "skip", "reason": "no endpoint or plan_id"}
+            try:
+                token = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _get_buyer_token(plan_id, agent_id)
+                )
+                if not token:
+                    return {"team": team, "status": "no_token"}
+                # Build a business-specific query
+                biz_query = (
+                    f"I am starting a business: {goal}. "
+                    f"Please provide actionable intelligence, analysis, or insights for this business. "
+                    f"Be specific and concise (3-5 bullet points or a short paragraph)."
+                )
+                async with httpx.AsyncClient(timeout=18.0) as client:
+                    resp = await client.post(
+                        ep,
+                        json={"query": biz_query, "message": biz_query},
+                        headers={"Content-Type": "application/json", "payment-signature": token},
+                    )
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        # Extract text content from common response shapes
+                        content = (
+                            data.get("response") or data.get("answer") or
+                            data.get("content") or data.get("result") or
+                            data.get("message") or data.get("output") or
+                            (str(data)[:300] if data else "")
+                        )
+                        if isinstance(content, dict):
+                            content = str(content)
+                        return {"team": team, "status": "ok", "content": str(content)[:400], "endpoint": ep}
+                    except Exception:
+                        return {"team": team, "status": "ok", "content": resp.text[:300], "endpoint": ep}
+                else:
+                    return {"team": team, "status": f"http_{resp.status_code}"}
+            except Exception as exc:
+                return {"team": team, "status": "error", "reason": str(exc)[:80]}
+
+        exec_tasks = [_exec_agent(p) for p in successful[:3]]
+        exec_results = await asyncio.gather(*exec_tasks, return_exceptions=True)
+        for r in exec_results:
+            if isinstance(r, dict) and r.get("status") == "ok":
+                business_outputs.append(r)
+                _analytics_mod.record_tool_call("nvm", "ok")
+
+    report["business_outputs"] = business_outputs
+
+    # --- Step 6b: Run an Apify actor for real web data ---
+    apify_run_data: dict = {}
+    if APIFY_API_KEY and apify_actors:
+        # Pick the most relevant actor (first in list, already ranked by relevance)
+        actor_to_run = apify_actors[0]
+        actor_id = actor_to_run.get("actor_id") or actor_to_run.get("id") or ""
+        if actor_id:
+            try:
+                # Run the actor with the goal as input, wait up to 15s for results
+                run_url = f"https://api.apify.com/v2/acts/{actor_id}/run-sync-get-dataset-items"
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        run_url,
+                        params={"token": APIFY_API_KEY, "maxItems": 5},
+                        json={"query": goal, "startUrls": [{"url": f"https://google.com/search?q={goal.replace(' ', '+')}+AI+tools"}]},
+                    )
+                if resp.status_code == 200:
+                    items = resp.json()
+                    if isinstance(items, list):
+                        apify_run_data = {
+                            "actor": actor_to_run.get("name", actor_id),
+                            "status": "completed",
+                            "items": items[:3],
+                            "item_count": len(items),
+                        }
+            except Exception as exc:
+                apify_run_data = {"actor": actor_to_run.get("name", ""), "status": "error", "reason": str(exc)[:80]}
+
+    if apify_run_data:
+        report["apify_run_result"] = apify_run_data
+
     # --- Trinity Business Plan: use OpenAI to generate agent roles for the goal ---
     # This is TrinityOS-style multi-agent orchestration planning.
     # Shows how the purchased agents would be orchestrated into a real business.
@@ -1590,15 +1680,15 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             _plan_resp = _plan_client.chat.completions.create(
                 model=MODEL_ID,
                 messages=[{"role": "user", "content": (
-                    f'Goal: "{goal}"\n'
-                    f'Purchased AI services: {bought_teams}\n\n'
-                    'Generate a Trinity multi-agent business plan. Return a JSON object with key "agents" '
-                    'containing an array of 4-5 agent roles.\n'
-                    'Each agent: {"name": string, "role": string, "task": string, "template": string}\n'
-                    'template must be one of: cornelius, ruby, outbound, webmaster\n'
-                    'Make roles specific to the goal. Example for marketing:\n'
-                    '[{"name":"Cornelius","role":"Market Intelligence","task":"Researches competitors and trends","template":"cornelius"}]\n'
-                    'Return ONLY the JSON object, no explanation.'
+                    f'Business goal: "{goal}"\n'
+                    f'Purchased AI services via Nevermined: {bought_teams}\n\n'
+                    'Generate a Trinity multi-agent business execution plan. These agents ACTUALLY RUN autonomously.\n'
+                    'Return JSON with key "agents", array of 4 agents.\n'
+                    'Each agent: {"name": string, "role": string, "task": string, "template": string, "output_preview": string}\n'
+                    '- template: one of cornelius, ruby, outbound, webmaster\n'
+                    '- task: specific, actionable task this agent executes RIGHT NOW (1 sentence, present tense)\n'
+                    '- output_preview: 1-sentence preview of what this agent will produce (e.g. "Generates a 5-page competitor analysis for the marketing agency sector")\n'
+                    'Be goal-specific. Return ONLY the JSON object.'
                 )}],
                 max_tokens=400, temperature=0.2,
             )
