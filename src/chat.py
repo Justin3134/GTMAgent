@@ -177,11 +177,15 @@ For each result, explain relevance to the query in 1 sentence. Never just list �
 - TrinityAgents (AbilityAI, social monitoring): https://us14.abilityai.dev/api/paid/social-monitor/chat — 100 credits (same plan)
 - For any other team: call buy_service() anyway — for free plans it auto-subscribes; for USDC plans it attempts with wallet USDC
 
-## USDC wallet status
-- The buyer wallet is 0x8b2714C2915a1Dd797A448aa2bdFe0886AFd0a18 (justin.07823@gmail.com)
-- Mog Markets costs $1.00 USDC per request (nvm:erc4337). To buy it, the wallet needs USDC.
-- If order_plan fails with "Insufficient balance", tell the user: "Your Nevermined wallet (0x8b2714...) needs USDC. Go to https://nevermined.app/account and fund it with USDC on Base Sepolia — even $5 covers many purchases."
-- DO NOT say the purchase is impossible. Say it needs wallet funding and provide the link.
+## Card-delegation plans (4242 card charges per request — NO pre-subscription needed)
+These teams use nvm:card-delegation. Just call buy_service() — the card is charged automatically:
+- Celebrity Economy: https://ai-celebrity-economy.vercel.app/v1/influencer/sponsored-answer — $0.10/req
+- SearchResearchAnything (Mindra): https://api.mindra.co/v1/workflows/basic-search-agent/run — $0.10/req
+
+## USDC wallet
+- Wallet 0x8b2714... (justin.07823@gmail.com) has USDC for nvm:erc4337 crypto plans
+- WAGMI AgentBank: subscribed with 2000 credits at $0.01/req — works now
+- If order_plan fails with "Insufficient balance": wallet needs more USDC at https://nevermined.app/account
 
 ## Behavior rules
 - Make decisions like a business: "I am purchasing X because its score of 0.82 beats Y at 0.61"
@@ -720,7 +724,9 @@ def _parse_x402_payment_required(response: httpx.Response, fallback_plan_id: str
     def _extract_from_accepts(accepts: list) -> tuple[str, str]:
         if not accepts:
             return plan_id, agent_id
-        a = accepts[0]
+        # Prefer the plan that matches our fallback (i.e. the one we're subscribed to)
+        matching = next((a for a in accepts if a.get("planId") == fallback_plan_id), None)
+        a = matching or accepts[0]
         pid = a.get("planId", plan_id) or plan_id
         aid = (a.get("extra") or {}).get("agentId", agent_id) or agent_id
         return pid, aid
@@ -768,10 +774,17 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
     target = _resolve_target_url(endpoint_url)
     vendor = endpoint_url.split("//")[-1].split("/")[0]
     is_mcp = target.endswith("/mcp") or "/mcp" in target
+
+    # Check if this endpoint has a custom body field in KNOWN_PURCHASABLE
+    _known_entry = next((e for e in KNOWN_PURCHASABLE if endpoint_url.startswith(e["endpoint_url"].rstrip("/"))), None)
+    _body_field = (_known_entry or {}).get("body_field", "")
+
     # MCP endpoints use JSON-RPC and Bearer auth; everything else uses query/message JSON + payment-signature
     if is_mcp:
         body = {"jsonrpc": "2.0", "method": "tools/call", "id": 1,
                 "params": {"name": "find_service", "arguments": {"query": query}}}
+    elif _body_field:
+        body = {_body_field: query, "query": query}  # include both for compatibility
     else:
         body = {"query": query, "message": query}
     headers_base = {"Content-Type": "application/json", "Accept": "application/json",
@@ -1380,7 +1393,6 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                         {"id": "openai",    "name": "OpenAI Audit",         "status": "queued"},
                         {"id": "nevermined","name": "Nevermined x402",      "status": "queued"},
                         {"id": "trinity",   "name": "AbilityAI Trinity",    "status": "queued"},
-                        {"id": "mog",       "name": "Mog Markets",          "status": "queued"},
                     ]}}
                     await asyncio.sleep(0.05)
                     # Step 2: Exa + Apify activate in parallel first
@@ -1389,8 +1401,6 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                     yield {"event": "tool_step", "data": {"agent": "apify", "status": "running", "msg": "Searching Apify Store..."}}
                     await asyncio.sleep(0.05)
                     yield {"event": "tool_step", "data": {"agent": "trinity", "status": "running", "msg": "Connecting Trinity..."}}
-                    await asyncio.sleep(0.05)
-                    yield {"event": "tool_step", "data": {"agent": "mog",    "status": "running", "msg": "Connecting Mog..."}}
                     await asyncio.sleep(0)
 
                 result = await _exec_tool(fn_name, fn_args)

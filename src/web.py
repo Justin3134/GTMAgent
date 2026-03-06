@@ -232,7 +232,6 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div class="agent-box idle" id="orch-openai"      style="grid-column:1"><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-nevermined"  style="grid-column:2"><div class="agent-box-name">Nevermined x402</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-trinity"     style="grid-column:1"><div class="agent-box-name" style="color:var(--green)">▲ AbilityAI Trinity</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-mog"         style="grid-column:2"><div class="agent-box-name">Mog Markets</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
     </div>
     <div class="divider"></div>
 
@@ -486,13 +485,10 @@ function renderOrchestration(data) {
   const nFailed = purchases.filter(p => !p.purchased && !p.skipped).length;
   orchSetAgent('nevermined', nBought > 0 ? 'done' : (nFailed > 0 ? 'failed' : 'idle'), nBought + ' bought');
 
-  // Update Trinity + Mog Markets boxes based on which vendors were purchased
+  // Update Trinity + fiat-team boxes based on which vendors were purchased
   const trinityPurchase = purchases.find(p => (p.endpoint||p.team||'').includes('abilityai'));
-  const mogPurchase     = purchases.find(p => (p.endpoint||p.team||'').includes('railway') || (p.endpoint||p.team||'').toLowerCase().includes('mog'));
   orchSetAgent('trinity', trinityPurchase ? (trinityPurchase.purchased ? 'done' : 'failed') : 'idle',
                trinityPurchase ? (trinityPurchase.purchased ? 'purchased ✓' : 'failed') : 'standby');
-  orchSetAgent('mog',     mogPurchase     ? (mogPurchase.purchased     ? 'done' : 'failed') : 'idle',
-               mogPurchase     ? (mogPurchase.purchased     ? 'purchased ✓' : 'failed') : 'standby');
 
   // Update buyer purchase list with team labels
   const txBuyer = document.getElementById('txs-buyer');
@@ -502,8 +498,7 @@ function renderOrchestration(data) {
       const items = bought.map(p => {
         const rawVendor = (p.endpoint || p.team || '');
         const isTrinity = rawVendor.includes('abilityai.dev');
-        const isMog = rawVendor.includes('railway.app') || rawVendor.includes('mog');
-        const label = isTrinity ? 'AbilityAI Trinity' : (isMog ? 'Mog Markets' : rawVendor.replace(/https?:[/][/]/,'').substring(0,20));
+        const label = isTrinity ? 'AbilityAI Trinity' : rawVendor.replace(/https?:[/][/]/,'').substring(0,20);
         const col = p.purchased ? 'var(--green)' : 'var(--orange)';
         const badge = isTrinity ? '<span style="font-size:9px;color:var(--green);margin-left:4px">▲ Trinity</span>' : '';
         return '<div class="tx-item"><div class="tx-top"><span class="tx-endpoint">' + escHtml(label) + badge + '</span>' +
@@ -515,7 +510,7 @@ function renderOrchestration(data) {
   }
 }
 
-const ORCH_IDS = {exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', mog:'orch-mog'};
+const ORCH_IDS = {exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity'};
 
 function orchSetAgent(id, status, msg) {
   const boxId = ORCH_IDS[id] || ('orch-agent-' + id);
@@ -532,7 +527,7 @@ function orchSetAgent(id, status, msg) {
 }
 
 function orchSetRunning() {
-  ['exa','apify','openai','nevermined','trinity','mog'].forEach(id => {
+  ['exa','apify','openai','nevermined','trinity'].forEach(id => {
     orchSetAgent(id, 'idle', 'queued...');
   });
 }
@@ -541,7 +536,6 @@ function orchSetRunning() {
 function orchIdFromEndpoint(ep) {
   if (!ep) return null;
   if (ep.includes('abilityai')) return 'trinity';
-  if (ep.includes('railway.app') || ep.toLowerCase().includes('mog')) return 'mog';
   if (ep.includes('exa') || ep.includes('ai.exa')) return 'exa';
   return 'nevermined';
 }

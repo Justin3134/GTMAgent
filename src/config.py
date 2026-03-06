@@ -47,28 +47,6 @@ KNOWN_PURCHASABLE = [
         "category": "social,monitoring,trends",
     },
     {
-        # Mog Markets — $1.00 USDC/request — nvm:erc4337 — needs USDC in wallet to buy
-        # Checkout: https://nevermined.app/checkout/60859172884142288164507163059546691936422006932528002950292307302678850457887
-        "team_name": "Mog Markets",
-        "description": "API marketplace: find_service (discovery) and buy_and_call (web search, summarization, image gen, weather). $1/request.",
-        "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
-        "plan_id": "60859172884142288164507163059546691936422006932528002950292307302678850457887",
-        "agent_id": "",  # agent_id=None is passed to get_x402_access_token — empty string causes 404
-        "price_credits": "$1.00 USDC",
-        "category": "marketplace,api",
-    },
-    {
-        # Mog Markets Hackathon Guide — $0.10 USDC/request — cheaper tier
-        # Checkout: https://nevermined.app/checkout/97008325797120983960610080256091504556118455322568723324233173955711405894085
-        "team_name": "Mog Markets Guide",
-        "description": "Nevermined hackathon guide: hackathon_details, hackathon_discover, exa_search, claude_summarize. $0.10/request.",
-        "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
-        "plan_id": "97008325797120983960610080256091504556118455322568723324233173955711405894085",
-        "agent_id": "",
-        "price_credits": "$0.10 USDC",
-        "category": "marketplace,hackathon",
-    },
-    {
         # WAGMI / AgentBank — paid plan ($0.01/credit). Subscribe at checkout URL below.
         # Checkout: https://nevermined.app/checkout/22048418573188197583118225823590719469073032209055332683827376109982321424950
         "team_name": "WAGMI",
