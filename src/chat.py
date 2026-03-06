@@ -1138,10 +1138,20 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             _analytics_mod.record_tool_call("exa", "ok")
         except Exception as e:
             exa_data = {"error": str(e)}
+    # When called without URL, highlights come from search_context results
+    _direct_highlights = exa_data.get("highlights", [])
+    _sc = exa_data.get("search_context", [])
+    _sc_highlights = [h for r in _sc for h in r.get("highlights", []) if h]
+    _all_highlights = (_direct_highlights or _sc_highlights)[:5]
     report["exa_research"] = {
         "summary": exa_data.get("summary", "")[:800],
-        "highlights": exa_data.get("highlights", [])[:3],
-        "search_context": exa_data.get("search_context", [])[:2],
+        "highlights": _all_highlights,
+        "search_context": _sc[:4],
+        # Extract competitor names/domains for competitive analysis table
+        "competitors": [
+            {"title": r.get("title", ""), "url": r.get("url", ""), "snippet": (r.get("highlights") or [""])[0][:120]}
+            for r in _sc[:4]
+        ],
     }
 
     # --- Step 2: Dual marketplace search (Nevermined + Apify in parallel) ---
