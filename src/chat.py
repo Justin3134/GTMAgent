@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from urllib.parse import urlparse as _urlparse
 
 import httpx
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from src.auditor import analyze_with_exa, run_audit
 from src import subgraph as _subgraph
@@ -53,73 +53,71 @@ async def _track_zc_impression_bg(offer_id: str) -> None:
         logger.warning(f"[ZeroClick] Chat impression error: {e}")
 
 
+_zc_last_live_ad: dict | None = None
+
+
 async def _attach_zeroclick_ad(endpoint_url: str, score: float) -> dict | None:
     """Fetch a ZeroClick ad for a high-scoring result (chat/strategy path).
 
-    Mirrors seller.py's _zeroclick_ad but usable from the chat agent without
-    going through the HTTP seller endpoint.
+    Retries up to 3 times with backoff, and caches the last successful live ad
+    so transient API failures still serve a real ad.
     """
+    global _zc_last_live_ad
     import uuid as _uuid
 
     if ZEROCLICK_API_KEY:
-        try:
-            # Build a rich context query so ZeroClick serves truly relevant ads
-            # This is native ad integration: ad relevance = what the agent is actually buying
-            domain = endpoint_url.split("//")[-1].split("/")[0] if endpoint_url.startswith("http") else endpoint_url
-            query = f"{endpoint_url} AI service {score:.0%} quality score Nevermined marketplace"
-            context = (
-                f"AI agent marketplace. Autonomous buyer purchasing AI services via Nevermined x402 protocol. "
-                f"Service domain: {domain}. Quality score: {score:.0%}. "
-                "Show ads for competing AI tools, developer tools, or SaaS alternatives."
-            )
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(
-                    "https://zeroclick.dev/api/v2/offers",
-                    headers={"x-zc-api-key": ZEROCLICK_API_KEY, "Content-Type": "application/json"},
-                    json={"method": "client", "query": query, "context": context, "limit": 1},
-                )
-                if resp.status_code == 200:
-                    _analytics_mod.record_tool_call("zeroclick", "ok")
-                    offers = resp.json()
-                    if offers and isinstance(offers, list):
-                        offer = offers[0]
-                        brand = offer.get("brand") or {}
-                        ad = {
-                            "id": offer.get("id", str(_uuid.uuid4())),
-                            "sponsor": brand.get("name", "ZeroClick"),
-                            "message": offer.get("content") or offer.get("subtitle") or offer.get("title", ""),
-                            "title": offer.get("title", ""),
-                            "cta": offer.get("cta", "Learn more"),
-                            "click_url": offer.get("clickUrl", "https://zeroclick.ai"),
-                            "image_url": offer.get("imageUrl", ""),
-                            "brand_url": brand.get("url", "https://zeroclick.ai"),
-                            "source": "zeroclick_live",
-                        }
-                        _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
-                        return ad
-                elif resp.status_code == 403:
-                    logger.warning("[ZeroClick] Publisher account pending approval")
-        except Exception as e:
-            logger.warning(f"[ZeroClick] Chat ad fetch error: {e}")
+        domain = endpoint_url.split("//")[-1].split("/")[0] if endpoint_url.startswith("http") else endpoint_url
+        query = f"{endpoint_url} AI service {score:.0%} quality score Nevermined marketplace"
+        context = (
+            f"AI agent marketplace. Autonomous buyer purchasing AI services via Nevermined x402 protocol. "
+            f"Service domain: {domain}. Quality score: {score:.0%}. "
+            "Show ads for competing AI tools, developer tools, or SaaS alternatives."
+        )
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        "https://zeroclick.dev/api/v2/offers",
+                        headers={"x-zc-api-key": ZEROCLICK_API_KEY, "Content-Type": "application/json"},
+                        json={"method": "client", "query": query, "context": context, "limit": 1},
+                    )
+                    if resp.status_code == 200:
+                        _analytics_mod.record_tool_call("zeroclick", "ok")
+                        offers = resp.json()
+                        if offers and isinstance(offers, list):
+                            offer = offers[0]
+                            brand = offer.get("brand") or {}
+                            ad = {
+                                "id": offer.get("id", str(_uuid.uuid4())),
+                                "sponsor": brand.get("name", "ZeroClick"),
+                                "message": offer.get("content") or offer.get("subtitle") or offer.get("title", ""),
+                                "title": offer.get("title", ""),
+                                "cta": offer.get("cta", "Learn more"),
+                                "click_url": offer.get("clickUrl", "https://zeroclick.ai"),
+                                "image_url": offer.get("imageUrl", ""),
+                                "brand_url": brand.get("url", "https://zeroclick.ai"),
+                                "source": "zeroclick_live",
+                            }
+                            _zc_last_live_ad = ad.copy()
+                            _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
+                            return ad
+                    elif resp.status_code == 403:
+                        _analytics_mod.record_tool_call("zeroclick", "pending")
+                        logger.warning("[ZeroClick] Publisher account pending approval — retrying")
+            except Exception as e:
+                logger.warning(f"[ZeroClick] Chat ad fetch error (attempt {attempt + 1}/3): {e}")
+            if attempt < 2:
+                await asyncio.sleep(1.0 * (attempt + 1))
 
-    # Fallback placeholder — still fires the full analytics funnel
-    _analytics_mod.record_tool_call("zeroclick", "ok")
-    ad = {
-        "id": str(_uuid.uuid4()),
-        "sponsor": "ZeroClick.ai",
-        "title": f"Quality verified — {score:.0%} audit score",
-        "message": (
-            f"This service scored {score:.0%} on GTMAgent. "
-            "ZeroClick native ads — contextual monetization for AI-native services."
-        ),
-        "cta": "Learn about ZeroClick",
-        "click_url": "https://zeroclick.ai",
-        "image_url": "",
-        "brand_url": "https://zeroclick.ai",
-        "source": "zeroclick_fallback",
-    }
-    _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
-    return ad
+    if _zc_last_live_ad:
+        ad = {**_zc_last_live_ad, "id": str(_uuid.uuid4())}
+        _analytics_mod.record_tool_call("zeroclick", "ok")
+        _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
+        logger.info("[ZeroClick] Served cached live ad after API failure")
+        return ad
+
+    logger.warning("[ZeroClick] No live ad available and no cache — skipping ad")
+    return None
 
 
 OWN_SERVICES = [
@@ -701,6 +699,18 @@ def _get_buyer_token(plan_id: str, agent_id: str = "") -> str:
             logger.info("x402 access token obtained via buyer account (erc4337/USDC)")
         return token
     except Exception as e:
+        # "plan is not associated to the agent" → retry without agent_id
+        if agent_id and "not associated" in str(e).lower():
+            logger.info(f"Retrying x402 token without agent_id (plan={plan_id[:20]}…)")
+            try:
+                token_resp = payments.x402.get_x402_access_token(plan_id=plan_id)
+                token = token_resp.get("accessToken", "")
+                if token:
+                    _analytics_mod.record_tool_call("nevermined", "ok")
+                    logger.info("x402 access token obtained (without agent_id)")
+                return token
+            except Exception as e2:
+                logger.warning(f"Buyer token retry also failed: {e2}")
         _analytics_mod.record_tool_call("nevermined", "error")
         logger.warning(f"Buyer token generation failed: {e}")
         return ""
@@ -1067,6 +1077,105 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
                     "vendor": vendor,
                 })
             return json.dumps({"status": 403, "purchased": False, "error": f"Forbidden from {vendor}: {body_txt}", "vendor": vendor})
+        elif resp.status_code == 422:
+            # Agent rejected our body — try to understand what fields it needs and retry
+            error_body = resp.text[:1000]
+            logger.warning(f"[x402] {vendor} returned 422: {error_body[:200]}")
+
+            # Try to parse validation hints from the 422 response
+            required_fields: list[str] = []
+            try:
+                err_json = resp.json()
+                # FastAPI/Pydantic-style: {"detail": [{"loc": [..., "field"], "msg": ..., "type": ...}]}
+                for d in (err_json.get("detail") or err_json.get("errors") or []):
+                    loc = d.get("loc", [])
+                    if loc:
+                        required_fields.append(str(loc[-1]))
+                # Simple style: {"required": ["field1", "field2"]} or {"missing": [...]}
+                required_fields.extend(err_json.get("required", []))
+                required_fields.extend(err_json.get("missing", []))
+            except Exception:
+                pass
+
+            # Build a richer body: spread the query across common agent field names
+            # so the endpoint can pick up whatever fields it validates
+            rich_body = {
+                "query": query,
+                "message": query,
+                "prompt": query,
+                "input": query,
+                "text": query,
+                "brand": query,
+                "brand_name": query,
+                "goal": query,
+                "campaign_goal": query,
+                "objective": query,
+                "description": query,
+                "task": query,
+                "content": query,
+            }
+
+            # If the query looks like it has structured data, try to parse key-value pairs
+            # e.g. "brand: Justinburger, goal: increase sales"
+            import re as _re
+            for m in _re.finditer(r'(?:^|[,;\n])\s*(\w[\w_\s]*?)\s*[:=]\s*([^,;\n]+)', query):
+                key = m.group(1).strip().lower().replace(" ", "_")
+                val = m.group(2).strip()
+                rich_body[key] = val
+
+            # Also try parsing the query as JSON directly
+            try:
+                parsed = json.loads(query)
+                if isinstance(parsed, dict):
+                    rich_body.update(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+            # If we discovered specific required fields, ensure they're populated
+            for field in required_fields:
+                if field not in rich_body:
+                    rich_body[field] = query
+
+            logger.info(f"[x402] Retrying {vendor} with enriched body (fields: {list(rich_body.keys())[:10]}…)")
+            try:
+                retry_resp = await client.post(target, json=rich_body, headers=headers)
+                if retry_resp.status_code == 200:
+                    try:
+                        result = retry_resp.json()
+                    except Exception:
+                        result = {"raw": retry_resp.text[:2000]}
+                    has_sig = bool(headers.get("payment-signature") or headers.get("authorization"))
+                    payment_method = "nevermined_x402" if has_sig else ("open_endpoint" if not real_plan_id else "no_payment")
+                    _analytics_mod.record_purchase(
+                        vendor=vendor, endpoint=target, credits=1 if has_sig else 0,
+                        score=result.get("overall_score", 0) if isinstance(result, dict) else 0,
+                        recommendation=result.get("recommendation", "") if isinstance(result, dict) else "",
+                        payment_method=payment_method,
+                    )
+                    return json.dumps({
+                        "status": 200,
+                        "purchased": has_sig,
+                        "called": True,
+                        "vendor": vendor,
+                        "endpoint": target,
+                        "payment_method": payment_method,
+                        "retry_reason": "422_body_enrichment",
+                        "response": result,
+                    })
+                else:
+                    logger.warning(f"[x402] {vendor} retry also failed: HTTP {retry_resp.status_code}")
+            except Exception as retry_exc:
+                logger.warning(f"[x402] {vendor} retry error: {retry_exc}")
+
+            return json.dumps({
+                "status": 422, "purchased": False,
+                "error": f"{vendor} rejected the request body (HTTP 422). The agent requires specific input fields.",
+                "vendor": vendor, "target": target,
+                "validation_error": error_body[:300],
+                "hint": "Try providing structured input like: brand_name, campaign_goal, description, etc.",
+                "required_fields": required_fields or None,
+            })
+
         elif resp.status_code in (500, 502, 503, 504):
             return json.dumps({
                 "status": resp.status_code, "purchased": False,
@@ -1268,12 +1377,12 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
 
     if OPENAI_API_KEY and successful:
         try:
-            client = OpenAI(api_key=OPENAI_API_KEY)
+            _aclient = AsyncOpenAI(api_key=OPENAI_API_KEY)
             responses_text = "\n\n".join(
                 f"Agent {i+1} ({r['team']}): {json.dumps(r['response'])[:800]}"
                 for i, r in enumerate(successful)
             )
-            synth = client.chat.completions.create(
+            synth = await _aclient.chat.completions.create(
                 model=MODEL_ID,
                 messages=[
                     {"role": "system", "content": "You are a synthesis orchestrator. Combine multiple AI agent responses into one cohesive, actionable output."},
@@ -1299,7 +1408,7 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
     return json.dumps(report, indent=2)
 
 
-async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
+async def _exec_business_strategy(goal: str, budget_credits: int = 5, progress_q: asyncio.Queue | None = None) -> str:
     """
     Autonomous Business Intelligence pipeline with 5 parallel Mindra GTM agents:
     1. Mindra (5 agents in parallel): Web Search, LinkedIn, Google Workspace, GitHub, Content Creator
@@ -1310,6 +1419,21 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     6. TrinityOS: call real Trinity agents for live business intelligence
     7. Synthesize: combine all outputs (Mindra + marketplace + Trinity) into GTM strategy
     """
+    import time as _time
+    _t0 = _time.monotonic()
+
+    def _progress(msg: str, agent: str | None = None, status: str | None = None):
+        if progress_q is None:
+            return
+        elapsed = _time.monotonic() - _t0
+        d: dict = {"message": f"[{elapsed:.1f}s] {msg}"}
+        if agent:
+            d = {"agent": agent, "status": status or "running", "msg": msg}
+        try:
+            progress_q.put_nowait(d)
+        except asyncio.QueueFull:
+            pass
+
     report: dict = {
         "goal": goal,
         "budget_credits": budget_credits,
@@ -1327,6 +1451,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     # --- Mindra: launch 5 GTM agents in parallel (Web Search, LinkedIn, Google, GitHub, Content) ---
     mindra_parallel_task = None
     if _mindra.is_available():
+        _progress("Launching 5 Mindra GTM agents in parallel")
         logger.info("[Mindra] Launching 5 parallel GTM agents for: %s", goal)
         _analytics_mod.record_tool_call("mindra", "ok")
         report["orchestrator"] = "mindra"
@@ -1341,13 +1466,16 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     report["steps"].append("exa_research")
     exa_data = {}
     if EXA_API_KEY:
+        _progress("Exa: researching competitive landscape", agent="exa", status="running")
         try:
-            # Search for competing AI agent tools/services in this domain, not generic articles
             competitive_query = f"best AI agent tools services for {goal} 2025 SaaS automation"
             exa_data = await analyze_with_exa("", competitive_query, EXA_API_KEY)
             _analytics_mod.record_tool_call("exa", "ok")
+            _n_comps = len(exa_data.get("search_context", []))
+            _progress(f"Exa: found {_n_comps} competitors", agent="exa", status="running")
         except Exception as e:
             exa_data = {"error": str(e)}
+            _progress(f"Exa: error — {str(e)[:40]}", agent="exa", status="running")
     _sc = exa_data.get("search_context", [])
     # Build competitor intelligence: extract tool/product names and what they do
     report["exa_research"] = {
@@ -1367,10 +1495,12 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     # --- Step 2: Dual marketplace search (Nevermined + Apify in parallel) ---
     report["steps"].append("marketplace_search")
+    _progress("Searching Nevermined marketplace + Apify Store", agent="apify", status="running")
     nvm_task = fetch_marketplace(nvm_api_key=NVM_API_KEY)
     async def _empty(): return []
     apify_task = search_apify_store(goal, APIFY_API_KEY, max_results=5) if APIFY_API_KEY else _empty()
     marketplace_entries, apify_actors = await asyncio.gather(nvm_task, apify_task)
+    _progress(f"Found {len(marketplace_entries)} Nevermined sellers, {len(apify_actors)} Apify actors")
 
     if apify_actors:
         _analytics_mod.record_tool_call("apify", "ok")
@@ -1467,9 +1597,11 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         except Exception:
             return False
 
+    _progress(f"Probing {len(candidates)} endpoints for liveness")
     probe_tasks = [_probe(c) for c in candidates]
     probe_results = await asyncio.gather(*probe_tasks)
     live_candidates = [c for c, alive in zip(candidates, probe_results) if alive]
+    _progress(f"{len(live_candidates)}/{len(candidates)} endpoints alive")
     if not live_candidates:
         live_candidates = candidates  # fallback: try all if probe all failed
 
@@ -1481,6 +1613,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     # --- Step 3: Audit top live candidates (up to 3 for speed) ---
     report["steps"].append("audit_candidates")
+    _n_audit = min(len(live_candidates), 3)
+    _progress(f"Auditing {_n_audit} candidates (OpenAI quality scoring)", agent="openai", status="running")
     scored = []
     audit_tasks = []
     for candidate in live_candidates[:3]:
@@ -1531,6 +1665,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     scored.sort(key=lambda x: x.get("overall_score", 0), reverse=True)
     report["audit_scores"] = scored
+    if scored:
+        _top = scored[0]
+        _progress(f"Audit done — top: {_top.get('team','')} ({_top.get('overall_score',0):.2f})", agent="openai", status="running")
 
     # --- Competitive analysis: compare top services head-to-head ---
     if len(scored) >= 2 and OPENAI_API_KEY:
@@ -1545,8 +1682,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 "In 3-4 sentences: which is the best pick and why? Mention trade-offs (speed vs quality vs price). "
                 "Be specific and direct. No bullet points."
             )
-            _comp_client = OpenAI(api_key=OPENAI_API_KEY)
-            _comp_resp = _comp_client.chat.completions.create(
+            _comp_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+            _comp_resp = await _comp_client.chat.completions.create(
                 model=MODEL_ID,
                 messages=[{"role": "user", "content": comp_prompt}],
                 temperature=0.2,
@@ -1568,9 +1705,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             report["zeroclick_ad"] = zc_ad
 
     # --- Step 4: Purchase plans via order_plan() — this IS the blockchain transaction ---
-    # The purchase = subscribing to a plan. This creates a real on-chain tx on Nevermined.
-    # Calling the endpoint is secondary. ROI logic decides which plans to buy and how many credits.
     report["steps"].append("purchase_services")
+    _progress("Analyzing ROI + purchasing via Nevermined order_plan()", agent="nevermined", status="running")
     credits_spent = 0
     payments_client = get_buyer_payments()
 
@@ -1579,8 +1715,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     goal_capabilities: list[str] = []
     if OPENAI_API_KEY and scored:
         try:
-            _goal_client = OpenAI(api_key=OPENAI_API_KEY)
-            _goal_resp = _goal_client.chat.completions.create(
+            _goal_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+            _goal_resp = await _goal_client.chat.completions.create(
                 model=MODEL_ID,
                 messages=[{"role": "user", "content": (
                     f'For the goal "{goal}", list exactly 3 AI capabilities needed (e.g. "social media analytics", '
@@ -1625,16 +1761,15 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             except Exception:
                 pass
 
-        # ROI Decision logic (this is where the agent "thinks"):
-        # - HOLD: already subscribed AND balance > 100 AND not the top pick
-        # - REPEAT_BUY: already subscribed but top pick (score > 0.7) → buy again
+        # ROI Decision logic:
+        # - REPEAT_BUY: already subscribed → re-buy (each order_plan = new blockchain tx)
         # - BUY: not subscribed, score >= 0.5
-        # - WATCH: not subscribed, score 0.4-0.5
+        # - WATCH: score 0.4-0.5
         # - AVOID: score < 0.4
-        if already_subscribed and existing_balance > 100 and score < 0.75:
-            roi_decision = "HOLD"
+        if already_subscribed and score >= 0.5:
+            roi_decision = "REPEAT_BUY"
             pick["roi_decision"] = roi_decision
-            pick["roi_reason"] = f"Already subscribed ({existing_balance} credits) — holding position"
+            pick["roi_reason"] = f"Re-buying top performer ({score:.2f}, balance={existing_balance}) for additional credits"
         elif score >= 0.5:
             roi_decision = "REPEAT_BUY" if already_subscribed else "BUY"
             pick["roi_decision"] = roi_decision
@@ -1691,13 +1826,12 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             price_per_credit = getattr(bal, "price_per_credit", 0)
             logger.info(f"[purchase] {team}: subscribed={already_subscribed}, balance={current_balance}, price_per_credit={price_per_credit}")
 
-            # ROI logic: for repeat purchase, allow re-buy even if already subscribed
-            # (shows repeat purchase behavior — each order_plan = new blockchain tx)
-            if is_repeat and already_subscribed and current_balance > 200:
-                logger.info(f"[purchase] HOLD {team}: repeat buy skipped (balance {current_balance} > 200)")
+            # For paid plans with very high balance, skip repeat buy to avoid waste
+            if is_repeat and already_subscribed and price_per_credit > 0 and current_balance > 200:
+                logger.info(f"[purchase] HOLD {team}: repeat buy skipped (paid plan, balance {current_balance} > 200)")
                 return {
                     "team": team, "purchased": False, "skipped": True,
-                    "reason": f"Repeat buy skipped — balance {current_balance} credits (> 200 threshold)",
+                    "reason": f"Repeat buy skipped — paid plan with {current_balance} credits remaining",
                     "roi_decision": "HOLD",
                 }
 
@@ -1777,15 +1911,20 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             return {"team": team, "purchased": False, "error": err[:100]}
 
     # Run all purchases in parallel
+    _progress(f"Purchasing {len(purchase_queue)} plans via Nevermined order_plan()")
     purchase_tasks = [_do_order_plan(pick) for pick in purchase_queue]
     purchase_results = await asyncio.gather(*purchase_tasks)
 
-    for result in purchase_results:
-        report["purchases"].append(result)
-        if result.get("purchased"):
+    for pr in purchase_results:
+        report["purchases"].append(pr)
+        if pr.get("purchased"):
             credits_spent += 1
+            _progress(f"✓ {pr.get('team','')} purchased (tx: {pr.get('tx_hash','')[:16]}…)")
+        elif pr.get("error"):
+            _progress(f"✗ {pr.get('team','')} failed: {pr.get('error','')[:40]}")
 
     report["credits_spent"] = credits_spent
+    _progress(f"{credits_spent} plans purchased, {credits_spent}/{budget_credits} credits spent", agent="nevermined", status="running")
 
     # --- Step 5: ROI analysis summary ---
     successful = [p for p in report["purchases"] if p.get("purchased")]
@@ -1856,10 +1995,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     ]
 
     # --- Step 6: EXECUTE — call each purchased service with an appropriate task ---
-    # Each service is different (DeFi tool, social monitor, data scraper, etc.)
-    # so we craft a service-specific request based on what it actually does.
     business_outputs: list[dict] = []
     if successful and NVM_BUYER_API_KEY:
+        _progress(f"Executing {len(successful)} purchased agents with goal-specific tasks")
         async def _exec_agent(p: dict) -> dict:
             """Call a purchased service endpoint with a task appropriate to what it does.
 
@@ -2049,9 +2187,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         report["apify_run_result"] = apify_run_data
 
     # --- Step 6c: TrinityOS multi-agent execution: call real Trinity agents on abilityai.dev ---
-    # These are REAL agent calls to TrinityOS-hosted agents via Nevermined x402.
-    # Nexus = orchestration/business intelligence, Social Monitor = trend analysis.
-    # Must run BEFORE synthesis so trinity_outputs are available for the combined report.
+    _progress("Calling TrinityOS agents (Nexus + Social Monitor)", agent="trinity", status="running")
     trinity_outputs.clear()
     trinity_agents_called = 0
     trinity_endpoints = [
@@ -2172,8 +2308,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         report["trinity_plan"] = real_trinity_plan
 
     # --- Step 6d: Execution synthesis — combine ALL real agent outputs ---
-    # Merges: business_outputs (marketplace agents) + trinity_outputs (TrinityOS agents)
-    # + exa_data (competitive research) into one synthesized report
+    _progress("Synthesizing all agent outputs into GTM strategy")
     if OPENAI_API_KEY:
         all_live_outputs = (
             [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
@@ -2183,13 +2318,13 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         comp_ctx = " ".join(c.get("snippet", "") for c in report.get("exa_research", {}).get("competitors", []))[:400]
 
         try:
-            _exec_client = OpenAI(api_key=OPENAI_API_KEY)
+            _exec_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
             if all_live_outputs:
                 combined = "\n\n".join(
                     f"[{b.get('team', '') or b.get('agent', '')}]: {b['content']}"
                     for b in all_live_outputs
                 )
-                _exec_resp = _exec_client.chat.completions.create(
+                _exec_resp = await _exec_client.chat.completions.create(
                     model=MODEL_ID,
                     messages=[
                         {"role": "system", "content": (
@@ -2210,7 +2345,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 synthesis_text = _exec_resp.choices[0].message.content or ""
             else:
                 exa_for_synth = exa_ctx or comp_ctx or "no external data available"
-                _exec_resp = _exec_client.chat.completions.create(
+                _exec_resp = await _exec_client.chat.completions.create(
                     model=MODEL_ID,
                     messages=[
                         {"role": "system", "content": (
@@ -2233,27 +2368,14 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         except Exception as _exec_err:
             logger.warning(f"[exec_synthesis] failed: {_exec_err}")
 
-    # --- ZeroClick: ensure ad is always present in the result (fallback if audit threshold not met) ---
+    # --- ZeroClick: fetch real ad from API if not already present ---
     if "zeroclick_ad" not in report:
-        import uuid as _uuid
         top_score = scored[0].get("overall_score", 0) if scored else 0
-        # Try live API first, fall back to branded placeholder
         zc_ad = await _attach_zeroclick_ad(
             scored[0].get("endpoint", goal) if scored else goal, max(top_score, 0.3)
         )
         if zc_ad:
             report["zeroclick_ad"] = zc_ad
-        else:
-            report["zeroclick_ad"] = {
-                "id": str(_uuid.uuid4()),
-                "sponsor": "ZeroClick.ai",
-                "title": f"GTMAgent — {top_score:.0%} quality verified",
-                "message": "Contextual native ads for AI-native services. ZeroClick monetizes every agent interaction.",
-                "cta": "Learn about ZeroClick",
-                "click_url": "https://zeroclick.ai",
-                "source": "zeroclick_fallback",
-            }
-            _analytics_mod.record_tool_call("zeroclick", "ok")
 
     # Add execution_results alias for LLM clarity
     report["execution_results"] = business_outputs
@@ -2280,6 +2402,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
 
     # --- Mindra: collect parallel GTM agent results ---
     if mindra_parallel_task is not None:
+        _progress("Collecting Mindra GTM agent results")
         try:
             mindra_results = await mindra_parallel_task
             mindra_agents_report = {}
@@ -2316,8 +2439,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 # Synthesize Mindra insights into the overall strategy
                 if OPENAI_API_KEY:
                     try:
-                        _mindra_client = OpenAI(api_key=OPENAI_API_KEY)
-                        _mindra_synth = _mindra_client.chat.completions.create(
+                        _mindra_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+                        _mindra_synth = await _mindra_client.chat.completions.create(
                             model=MODEL_ID,
                             messages=[
                                 {"role": "system", "content": (
@@ -2342,12 +2465,265 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             logger.warning(f"[Mindra] Parallel agents error (non-fatal): {e}")
             report["mindra_status"] = "error"
 
+    _progress("Pipeline complete — generating response")
     return json.dumps(report, indent=2)
+
+
+def _extract_budget_from_message(message: str) -> tuple[str, int] | None:
+    """Detect if a message contains both a business goal and a budget.
+
+    Returns (goal, budget_credits) or None if not detected.
+    """
+    import re
+    msg_lower = message.lower().strip()
+    # Patterns: "X with N credits", "budget N", "N credits", "spend N"
+    patterns = [
+        r'(.+?)\s+(?:with|budget|spend)\s+(\d+)\s*credits?',
+        r'(\d+)\s*credits?\s+(?:for|to|on)\s+(.+)',
+        r'(.+?)\s+(\d+)\s*credits?\s*$',
+    ]
+    for pat in patterns:
+        m = re.search(pat, msg_lower, re.IGNORECASE)
+        if m:
+            groups = m.groups()
+            if groups[0].isdigit():
+                budget = int(groups[0])
+                goal = groups[1].strip()
+            else:
+                goal = groups[0].strip()
+                budget = int(groups[1])
+            if 1 <= budget <= 100 and len(goal) >= 3:
+                return (goal, budget)
+
+    # Also match pure budget replies in a conversation context: "5", "10 credits"
+    budget_only = re.match(r'^(\d+)\s*(?:credits?)?\s*$', msg_lower)
+    if budget_only:
+        budget = int(budget_only.group(1))
+        if 1 <= budget <= 100:
+            for h in reversed(history if 'history' in dir() else []):
+                if h.get("role") == "user":
+                    prev = h["content"].lower()
+                    if not prev.strip().isdigit() and len(prev) > 5:
+                        return (prev, budget)
+    return None
 
 
 async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict, None]:
     """Run the chat agent and yield SSE events."""
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
+    # Detect budget in message and auto-trigger strategy (LLM often misses this)
+    has_goal_in_history = any(
+        h.get("role") == "user" and len(h.get("content", "")) > 5 and not h["content"].strip().isdigit()
+        for h in history
+    )
+    budget_match = _extract_budget_from_message(message)
+    if budget_match is None and has_goal_in_history:
+        import re
+        budget_only = re.match(r'^(\d+)\s*(?:credits?)?\s*$', message.strip().lower())
+        if budget_only:
+            budget = int(budget_only.group(1))
+            if 1 <= budget <= 100:
+                prev_goal = ""
+                for h in reversed(history):
+                    if h.get("role") == "user" and not h["content"].strip().isdigit() and len(h["content"]) > 5:
+                        prev_goal = h["content"]
+                        break
+                if prev_goal:
+                    budget_match = (prev_goal, budget)
+
+    if budget_match:
+        goal, budget_credits = budget_match
+        logger.info(f"[chat] Auto-detected budget: goal='{goal}', budget={budget_credits}")
+        fn_name = "execute_business_strategy"
+        fn_args = {"goal": goal, "budget_credits": budget_credits}
+        yield {"event": "tool_use", "data": {"tool": fn_name, "args": fn_args}}
+
+        mindra_active = _mindra.is_available()
+        agents_init = [
+            {"id": "exa",       "name": "Exa Research",         "status": "queued"},
+            {"id": "apify",     "name": "Apify Store",          "status": "queued"},
+            {"id": "openai",    "name": "OpenAI Audit",         "status": "queued"},
+            {"id": "nevermined","name": "Nevermined x402",      "status": "queued"},
+            {"id": "trinity",   "name": "AbilityAI Trinity",    "status": "queued"},
+        ]
+        if mindra_active:
+            agents_init = [
+                {"id": "mindra-web",      "name": "Mindra: Web Search",     "status": "queued"},
+                {"id": "mindra-linkedin",  "name": "Mindra: LinkedIn",       "status": "queued"},
+                {"id": "mindra-google",    "name": "Mindra: Google",         "status": "queued"},
+                {"id": "mindra-github",    "name": "Mindra: GitHub",         "status": "queued"},
+                {"id": "mindra-content",   "name": "Mindra: Content",        "status": "queued"},
+            ] + agents_init
+        yield {"event": "tool_step", "data": {"agent_init": agents_init}}
+        await asyncio.sleep(0.05)
+        if mindra_active:
+            for _ma_id, _ma_msg in [
+                ("mindra-web", "Searching market trends..."),
+                ("mindra-linkedin", "Finding connections & posts..."),
+                ("mindra-google", "Scanning workspace..."),
+                ("mindra-github", "Discovering repos & tools..."),
+                ("mindra-content", "Drafting GTM content..."),
+            ]:
+                yield {"event": "tool_step", "data": {"agent": _ma_id, "status": "running", "msg": _ma_msg}}
+                await asyncio.sleep(0.02)
+        yield {"event": "tool_step", "data": {"agent": "exa",   "status": "running", "msg": "Researching domain..."}}
+        await asyncio.sleep(0.05)
+        yield {"event": "tool_step", "data": {"agent": "apify", "status": "running", "msg": "Searching Apify Store..."}}
+        await asyncio.sleep(0.05)
+        yield {"event": "tool_step", "data": {"agent": "trinity", "status": "running", "msg": "Connecting Trinity..."}}
+        await asyncio.sleep(0)
+
+        # Run strategy with live progress streaming
+        progress_q = asyncio.Queue(maxsize=200)
+        strategy_task = asyncio.create_task(
+            _exec_business_strategy(goal, budget_credits, progress_q=progress_q)
+        )
+
+        while not strategy_task.done():
+            try:
+                progress = await asyncio.wait_for(progress_q.get(), timeout=0.5)
+                yield {"event": "tool_step", "data": progress}
+            except asyncio.TimeoutError:
+                continue
+            except Exception:
+                break
+
+        # Drain remaining progress events
+        while not progress_q.empty():
+            try:
+                progress = progress_q.get_nowait()
+                yield {"event": "tool_step", "data": progress}
+            except asyncio.QueueEmpty:
+                break
+
+        try:
+            result = strategy_task.result()
+        except Exception as _strat_err:
+            logger.error(f"[chat] Strategy execution failed: {_strat_err}")
+            result = json.dumps({"error": str(_strat_err), "goal": goal, "steps": []})
+
+        # --- Emit full completion events (Mindra, Trinity, core agents, ZeroClick, tool_result) ---
+        _mindra_id_map = {
+            "web_search": "mindra-web",
+            "linkedin": "mindra-linkedin",
+            "google": "mindra-google",
+            "github": "mindra-github",
+            "content": "mindra-content",
+        }
+        try:
+            r = json.loads(result)
+            n_apify = len(r.get("apify_actors", []))
+            n_audited = len([s for s in r.get("audit_scores", []) if not s.get("error")])
+            n_bought = len([p for p in r.get("purchases", []) if p.get("purchased")])
+            n_agents = len([a for a in r.get("agents", []) if a.get("purchased")])
+
+            # Mindra agent statuses
+            mindra_agents = r.get("mindra_agents", {})
+            if mindra_agents:
+                for _mid, _sse_id in _mindra_id_map.items():
+                    _ma = mindra_agents.get(_mid, {})
+                    _ma_status = _ma.get("status", "unknown")
+                    _ma_ok = _ma_status == "completed"
+                    _ma_tools = _ma.get("tool_count", 0)
+                    _ma_answer_len = len(_ma.get("answer", ""))
+                    if _ma_ok and _ma_answer_len > 0:
+                        _msg = f"{_ma_tools} tools — {_ma_answer_len} chars"
+                    elif _ma_status == "error":
+                        _msg = _ma.get("answer", "error")[:20] or "failed"
+                    elif _ma_status == "timeout":
+                        _msg = "timed out"
+                    elif _ma_status == "unavailable":
+                        _msg = "unavailable"
+                    else:
+                        _msg = _ma_status
+                    yield {"event": "tool_step", "data": {
+                        "agent": _sse_id,
+                        "status": "done" if _ma_ok else "failed",
+                        "msg": _msg,
+                    }}
+            elif mindra_active or r.get("orchestrator") == "mindra":
+                _mindra_err = r.get("mindra_status", r.get("error", "no result"))
+                for _sse_id in _mindra_id_map.values():
+                    yield {"event": "tool_step", "data": {
+                        "agent": _sse_id, "status": "failed", "msg": str(_mindra_err)[:22],
+                    }}
+
+            # TrinityOS agent status
+            n_trinity = r.get("trinity_agents_succeeded", 0)
+            n_trinity_called = r.get("trinity_agents_called", 0)
+            if n_trinity_called > 0:
+                yield {"event": "tool_step", "data": {
+                    "agent": "trinity",
+                    "status": "done" if n_trinity > 0 else "failed",
+                    "msg": f"{n_trinity}/{n_trinity_called} agents responded",
+                }}
+
+            yield {"event": "tool_step", "data": {"agent": "exa",        "status": "done", "msg": "Research complete"}}
+            yield {"event": "tool_step", "data": {"agent": "apify",      "status": "done", "msg": f"{n_apify} actors found"}}
+            yield {"event": "tool_step", "data": {"agent": "openai",     "status": "done" if n_audited else "idle", "msg": f"{n_audited} audited"}}
+            nvm_bought = n_bought or n_agents
+            yield {"event": "tool_step", "data": {"agent": "nevermined", "status": "done" if nvm_bought else "failed", "msg": f"{nvm_bought} purchased"}}
+        except Exception as _orch_err:
+            logger.warning(f"[Orchestration] Auto-detect post-tool event emission failed: {_orch_err}")
+            if mindra_active:
+                for _sse_id in _mindra_id_map.values():
+                    yield {"event": "tool_step", "data": {
+                        "agent": _sse_id, "status": "failed", "msg": "error",
+                    }}
+
+        # ZeroClick ad
+        try:
+            _zc_parsed = json.loads(result)
+            _zc_ad = None
+            _zc_url = ""
+            _zc_score = 0.0
+            if isinstance(_zc_parsed, dict):
+                _zc_ad = _zc_parsed.get("ad") or _zc_parsed.get("zeroclick_ad")
+                _zc_url = _zc_parsed.get("endpoint_url", _zc_parsed.get("endpoint", ""))
+                _zc_score = float(_zc_parsed.get("overall_score") or 0)
+            if _zc_ad:
+                _analytics_mod.record_zeroclick_impression(_zc_ad, _zc_url, _zc_score)
+                _analytics_mod.record_tool_call("zeroclick", "ok")
+                offer_id = _zc_ad.get("id", "")
+                if offer_id:
+                    asyncio.create_task(_track_zc_impression_bg(offer_id))
+                yield {"event": "zeroclick_ad", "data": {
+                    "ad": _zc_ad,
+                    "audit_score": _zc_score,
+                    "endpoint_url": _zc_url,
+                }}
+        except Exception:
+            pass
+
+        # Emit tool_result — this is what enables Flow/Business views
+        try:
+            parsed = json.loads(result)
+            yield {"event": "tool_result", "data": {"tool": fn_name, "result": parsed}}
+        except (json.JSONDecodeError, TypeError):
+            yield {"event": "tool_result", "data": {"tool": fn_name, "result": result}}
+
+        # Feed result to LLM for presentation
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages.extend(history)
+        messages.append({"role": "user", "content": message})
+        messages.append({"role": "assistant", "content": None, "tool_calls": [
+            {"id": "auto_1", "type": "function", "function": {"name": fn_name, "arguments": json.dumps(fn_args)}}
+        ]})
+        messages.append({"role": "tool", "tool_call_id": "auto_1", "content": result[:8000]})
+
+        response = await client.chat.completions.create(
+            model=MODEL_ID,
+            messages=messages,
+            tools=TOOLS,
+            temperature=0.3,
+        )
+        _analytics_mod.record_tool_call("openai", "ok")
+        choice = response.choices[0]
+        text = choice.message.content or ""
+        if text:
+            yield {"event": "token", "data": {"text": text}}
+        return
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages.extend(history)
@@ -2355,7 +2731,7 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
 
     max_rounds = 8
     for _ in range(max_rounds):
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=MODEL_ID,
             messages=messages,
             tools=TOOLS,
@@ -2411,7 +2787,31 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                     yield {"event": "tool_step", "data": {"agent": "trinity", "status": "running", "msg": "Connecting Trinity..."}}
                     await asyncio.sleep(0)
 
-                result = await _exec_tool(fn_name, fn_args)
+                # Stream live progress for strategy execution
+                if fn_name == "execute_business_strategy":
+                    _loop_progress_q = asyncio.Queue(maxsize=200)
+                    _loop_strategy_task = asyncio.create_task(
+                        _exec_business_strategy(fn_args.get("goal", ""), int(fn_args.get("budget_credits", 5)), progress_q=_loop_progress_q)
+                    )
+                    while not _loop_strategy_task.done():
+                        try:
+                            _lp = await asyncio.wait_for(_loop_progress_q.get(), timeout=0.5)
+                            yield {"event": "tool_step", "data": _lp}
+                        except asyncio.TimeoutError:
+                            continue
+                        except Exception:
+                            break
+                    while not _loop_progress_q.empty():
+                        try:
+                            yield {"event": "tool_step", "data": _loop_progress_q.get_nowait()}
+                        except asyncio.QueueEmpty:
+                            break
+                    try:
+                        result = _loop_strategy_task.result()
+                    except Exception as _ls_err:
+                        result = json.dumps({"error": str(_ls_err), "goal": fn_args.get("goal", ""), "steps": []})
+                else:
+                    result = await _exec_tool(fn_name, fn_args)
 
                 # After orchestration: emit final agent states based on actual result
                 _mindra_id_map = {
@@ -2495,20 +2895,9 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
                         _zc_ad = _zc_parsed.get("ad") or _zc_parsed.get("zeroclick_ad")
                         _zc_url = _zc_parsed.get("endpoint_url", _zc_parsed.get("endpoint", ""))
                         _zc_score = float(_zc_parsed.get("overall_score") or 0)
-                    # For buy_service that succeeded but has no ad — synthesize a ZeroClick ad
+                    # For buy_service that succeeded but has no ad — fetch real ad from ZeroClick API
                     if not _zc_ad and fn_name == "buy_service" and isinstance(_zc_parsed, dict) and _zc_parsed.get("purchased"):
                         _zc_ad = await _attach_zeroclick_ad(_zc_url or "marketplace", 0.6)
-                        if not _zc_ad:
-                            import uuid as _uuid
-                            _zc_ad = {
-                                "id": str(_uuid.uuid4()),
-                                "sponsor": "ZeroClick.ai",
-                                "title": "GTMAgent — verified purchase complete",
-                                "message": "Your autonomous agent just completed a Nevermined x402 purchase. ZeroClick monetizes every AI service interaction.",
-                                "cta": "Learn about ZeroClick",
-                                "click_url": "https://zeroclick.ai",
-                                "source": "zeroclick_auto",
-                            }
                     if _zc_ad:
                         _analytics_mod.record_zeroclick_impression(_zc_ad, _zc_url, _zc_score)
                         _analytics_mod.record_tool_call("zeroclick", "ok")

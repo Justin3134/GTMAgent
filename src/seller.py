@@ -10,6 +10,7 @@ Free endpoints:
   GET  /pricing, /stats, /health, /services, /sample, /chain, /credits
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -145,72 +146,70 @@ async def _gate(request: Request, endpoint: str, credits: int) -> Optional[JSONR
     return None
 
 # ---------------------------------------------------------------------------
-# ZeroClick
+# ZeroClick — always-live with retry + cache
 # ---------------------------------------------------------------------------
+
+_zc_last_live_ad: dict | None = None
 
 
 async def _zeroclick_ad(endpoint_url: str, audit_result: dict) -> dict:
-    """Fetch a sponsored offer from ZeroClick to embed in high-score audit results.
+    """Fetch a sponsored offer from ZeroClick to embed in audit results.
 
-    Tries the live ZeroClick API first; falls back to a branded placeholder so the
-    dashboard always registers ZeroClick ad events regardless of API availability.
+    Retries up to 3 times with backoff, and caches the last successful live ad
+    so transient API failures still serve a real ad.
     """
+    global _zc_last_live_ad
     score = audit_result["overall_score"]
     import uuid as _uuid
 
     if ZEROCLICK_API_KEY:
-        try:
-            import httpx as _httpx
-            query = f"AI agent quality audit {score:.0%} — {endpoint_url}"
-            async with _httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.post(
-                    "https://zeroclick.dev/api/v2/offers",
-                    headers={"x-zc-api-key": ZEROCLICK_API_KEY, "Content-Type": "application/json"},
-                    json={"method": "client", "query": query, "context": "AI agent quality audit, Nevermined marketplace", "limit": 1},
-                )
-                if resp.status_code == 200:
-                    _analytics_mod.record_tool_call("zeroclick", "ok")
-                    offers = resp.json()
-                    if offers and isinstance(offers, list):
-                        offer = offers[0]
-                        brand = offer.get("brand") or {}
-                        ad = {
-                            "id": offer.get("id", str(_uuid.uuid4())),
-                            "sponsor": brand.get("name", "ZeroClick"),
-                            "message": offer.get("content") or offer.get("subtitle") or offer.get("title", ""),
-                            "title": offer.get("title", ""),
-                            "cta": offer.get("cta", "Learn more"),
-                            "click_url": offer.get("clickUrl", "https://zeroclick.ai"),
-                            "image_url": offer.get("imageUrl", ""),
-                            "brand_url": brand.get("url", "https://zeroclick.ai"),
-                            "source": "zeroclick_live",
-                        }
-                        _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
-                        return ad
-                elif resp.status_code == 403:
-                    _analytics_mod.record_tool_call("zeroclick", "pending")
-                    logger.warning("ZeroClick: publisher account pending approval")
-        except Exception as e:
-            logger.warning(f"ZeroClick API error: {e}")
+        import httpx as _httpx
+        query = f"AI agent quality audit {score:.0%} — {endpoint_url}"
+        for attempt in range(3):
+            try:
+                async with _httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(
+                        "https://zeroclick.dev/api/v2/offers",
+                        headers={"x-zc-api-key": ZEROCLICK_API_KEY, "Content-Type": "application/json"},
+                        json={"method": "client", "query": query, "context": "AI agent quality audit, Nevermined marketplace", "limit": 1},
+                    )
+                    if resp.status_code == 200:
+                        _analytics_mod.record_tool_call("zeroclick", "ok")
+                        offers = resp.json()
+                        if offers and isinstance(offers, list):
+                            offer = offers[0]
+                            brand = offer.get("brand") or {}
+                            ad = {
+                                "id": offer.get("id", str(_uuid.uuid4())),
+                                "sponsor": brand.get("name", "ZeroClick"),
+                                "message": offer.get("content") or offer.get("subtitle") or offer.get("title", ""),
+                                "title": offer.get("title", ""),
+                                "cta": offer.get("cta", "Learn more"),
+                                "click_url": offer.get("clickUrl", "https://zeroclick.ai"),
+                                "image_url": offer.get("imageUrl", ""),
+                                "brand_url": brand.get("url", "https://zeroclick.ai"),
+                                "source": "zeroclick_live",
+                            }
+                            _zc_last_live_ad = ad.copy()
+                            _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
+                            return ad
+                    elif resp.status_code == 403:
+                        _analytics_mod.record_tool_call("zeroclick", "pending")
+                        logger.warning("ZeroClick: publisher account pending approval — retrying")
+            except Exception as e:
+                logger.warning(f"ZeroClick API error (attempt {attempt + 1}/3): {e}")
+            if attempt < 2:
+                await asyncio.sleep(1.0 * (attempt + 1))
 
-    # Fallback: branded placeholder — still triggers full analytics funnel
-    _analytics_mod.record_tool_call("zeroclick", "ok")
-    ad = {
-        "id": str(_uuid.uuid4()),
-        "sponsor": "ZeroClick.ai",
-        "title": f"Quality verified by GTMAgent — {score:.0%} score",
-        "message": (
-            f"This agent scored {score:.0%} on GTMAgent. "
-            "ZeroClick native ads — contextual monetization for AI-native services."
-        ),
-        "cta": "Learn about ZeroClick",
-        "click_url": "https://zeroclick.ai",
-        "image_url": "",
-        "brand_url": "https://zeroclick.ai",
-        "source": "zeroclick_fallback",
-    }
-    _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
-    return ad
+    if _zc_last_live_ad:
+        ad = {**_zc_last_live_ad, "id": str(_uuid.uuid4())}
+        _analytics_mod.record_tool_call("zeroclick", "ok")
+        _analytics_mod.record_zeroclick_ad_served(ad, endpoint_url, score)
+        logger.info("ZeroClick: served cached live ad after API failure")
+        return ad
+
+    logger.warning("ZeroClick: no live ad available and no cache — skipping ad")
+    return {}
 
 # ---------------------------------------------------------------------------
 # Main endpoint

@@ -467,12 +467,42 @@ async def execute_purchases_node(state: BuyerState) -> dict:
                 "GTMAgent ZeroClick referral purchase" if is_ad_driven
                 else "GTMAgent ROI verification purchase"
             )
+
+            # Build a richer body using service metadata so endpoints that
+            # require specific fields (brand, goal, etc.) don't 422.
+            svc_desc = ""
+            for entry in state.get("marketplace", []):
+                if entry.get("endpoint_url") == url:
+                    svc_desc = entry.get("description", "")[:200]
+                    break
+            body: dict = {
+                "query": query,
+                "message": query,
+                "prompt": query,
+                "input": query,
+                "description": svc_desc or query,
+                "brand": "GTMAgent",
+                "brand_name": "GTMAgent",
+                "goal": query,
+                "campaign_goal": query,
+                "task": query,
+            }
+
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
                     f"{url.rstrip('/')}/data",
-                    json={"query": query},
+                    json=body,
                     headers=headers,
                 )
+
+                # On 422, try a simpler body as fallback
+                if resp.status_code == 422:
+                    _log(state, f"  {team}: 422 with rich body, retrying with minimal body")
+                    resp = await client.post(
+                        f"{url.rstrip('/')}/data",
+                        json={"query": query},
+                        headers=headers,
+                    )
 
                 if resp.status_code == 200:
                     purchase_note = "zeroclick referral" if is_ad_driven else "verification purchase"

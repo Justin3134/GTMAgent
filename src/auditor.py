@@ -6,7 +6,7 @@ import statistics
 import time
 from datetime import datetime, timezone
 import httpx
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from src import analytics as _analytics_mod
 
 
@@ -343,8 +343,8 @@ async def score_quality(
     )
 
     try:
-        client = OpenAI(api_key=openai_api_key)
-        completion = client.chat.completions.create(
+        client = AsyncOpenAI(api_key=openai_api_key)
+        completion = await client.chat.completions.create(
             model=model_id,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
@@ -402,8 +402,8 @@ async def check_consistency(
     )
 
     try:
-        client = OpenAI(api_key=openai_api_key)
-        completion = client.chat.completions.create(
+        client = AsyncOpenAI(api_key=openai_api_key)
+        completion = await client.chat.completions.create(
             model=model_id,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,

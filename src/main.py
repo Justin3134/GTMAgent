@@ -207,20 +207,12 @@ async def keys_status():
 
 @app.get("/api/zeroclick-ad")
 async def zeroclick_gate_ad():
-    """Fetch a ZeroClick ad for the chat ad-gate (every N messages)."""
+    """Fetch a real ZeroClick ad for the chat ad-gate."""
     from src.chat import _attach_zeroclick_ad
     ad = await _attach_zeroclick_ad("chat-gate", 0.7)
     if ad:
         return ad
-    return {
-        "id": "",
-        "sponsor": "ZeroClick.ai",
-        "title": "ZeroClick — Native AI Ads",
-        "message": "Contextual native ads for AI-native services. ZeroClick monetizes every agent interaction.",
-        "cta": "Learn about ZeroClick",
-        "click_url": "https://zeroclick.ai",
-        "source": "zeroclick_gate_fallback",
-    }
+    return {"skip": True}
 
 
 @app.post("/zeroclick/click")

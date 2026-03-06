@@ -100,6 +100,22 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 }
 .zc-ad-cta:hover { background: #142814; }
 
+/* ZeroClick Toggle Switch */
+.zc-toggle-wrap { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.zc-toggle-label { font-size: 9px; color: var(--dim); }
+.zc-toggle { position: relative; width: 28px; height: 16px; cursor: pointer; }
+.zc-toggle input { display: none; }
+.zc-toggle-track {
+  position: absolute; inset: 0; border-radius: 8px;
+  background: #1a1a1a; border: 1px solid var(--border); transition: background 0.2s, border-color 0.2s;
+}
+.zc-toggle input:checked + .zc-toggle-track { background: #0a2a0a; border-color: var(--green); }
+.zc-toggle-thumb {
+  position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--dim); transition: transform 0.2s, background 0.2s;
+}
+.zc-toggle input:checked ~ .zc-toggle-thumb { transform: translateX(12px); background: var(--green); }
+
 /* ZeroClick Ad Gate Overlay */
 #zc-gate-overlay {
   display: none;
@@ -686,7 +702,14 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     <div class="divider"></div>
 
     <div class="section-label">ZeroClick <span style="font-size:9px;letter-spacing:0" id="tool-zc-status" style="color:var(--green)">live</span></div>
-    <div style="font-size:9px;color:var(--dim2);margin-bottom:6px">Ad gate active — every action requires ZeroClick</div>
+    <div class="zc-toggle-wrap">
+      <label class="zc-toggle" title="Toggle ZeroClick ads on/off">
+        <input type="checkbox" id="zc-toggle-cb" checked>
+        <div class="zc-toggle-track"></div>
+        <div class="zc-toggle-thumb"></div>
+      </label>
+      <span class="zc-toggle-label" id="zc-toggle-label">Ad gate active</span>
+    </div>
     <div class="stat-row"><span class="stat-key">impressions</span><span class="stat-val" id="zc-imp">0</span></div>
     <div class="stat-row"><span class="stat-key">conversions</span><span class="stat-val" id="zc-conv">0</span></div>
     <div class="divider"></div>
@@ -701,7 +724,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 </div>
 
 <script>
-const S='', B='';
+const S='http://localhost:3000', B='http://localhost:3000';
 const msgs = document.getElementById('messages');
 const input = document.getElementById('chat-input');
 const btn = document.getElementById('send-btn');
@@ -710,6 +733,22 @@ let lastSentMessage = '';
 let totalCreditsSpent = 0;
 let lastStreamAd = null;
 let adGateActive = false;
+
+// ZeroClick toggle — persisted in localStorage
+let zcEnabled = localStorage.getItem('zc_enabled') !== 'false';
+const zcToggleCb = document.getElementById('zc-toggle-cb');
+const zcToggleLabel = document.getElementById('zc-toggle-label');
+zcToggleCb.checked = zcEnabled;
+zcToggleLabel.textContent = zcEnabled ? 'Ad gate active' : 'Ads disabled';
+zcToggleCb.addEventListener('change', () => {
+  zcEnabled = zcToggleCb.checked;
+  localStorage.setItem('zc_enabled', zcEnabled);
+  zcToggleLabel.textContent = zcEnabled ? 'Ad gate active' : 'Ads disabled';
+  const dotZc = document.getElementById('dot-zc');
+  const zcStatus = document.getElementById('tool-zc-status');
+  if (dotZc) dotZc.className = zcEnabled ? 'dot up' : 'dot';
+  if (zcStatus) { zcStatus.textContent = zcEnabled ? 'live' : 'off'; zcStatus.style.color = zcEnabled ? 'var(--green)' : 'var(--dim)'; }
+});
 
 
 function retryLastMessage() {
@@ -721,6 +760,10 @@ function retryLastMessage() {
 
 let _gateResolve = null;
 async function showAdGate(ad, hint, onDone) {
+  if (!zcEnabled) {
+    if (onDone) onDone();
+    return;
+  }
   adGateActive = true;
   if (!ad) {
     try {
@@ -728,20 +771,21 @@ async function showAdGate(ad, hint, onDone) {
       if (resp.ok) ad = await resp.json();
     } catch(e) {}
   }
-  if (!ad) ad = {
-    sponsor: 'ZeroClick.ai', title: 'ZeroClick — Native AI Ads',
-    message: 'Contextual native ads for AI-native services.',
-    cta: 'Learn about ZeroClick', click_url: 'https://zeroclick.ai'
-  };
+  if (!ad || ad.skip) {
+    adGateActive = false;
+    if (onDone) onDone();
+    if (_gateResolve) { _gateResolve(); _gateResolve = null; }
+    return;
+  }
 
   const overlay = document.getElementById('zc-gate-overlay');
-  document.getElementById('zc-gate-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
+  document.getElementById('zc-gate-title').textContent = ad.title || ad.sponsor || '';
   document.getElementById('zc-gate-msg').textContent = (ad.message || '').substring(0, 200);
   const ctaEl = document.getElementById('zc-gate-cta');
   ctaEl.textContent = (ad.cta || 'Learn more') + ' →';
-  ctaEl.href = ad.click_url || 'https://zeroclick.ai';
+  ctaEl.href = ad.click_url || '#';
   ctaEl.dataset.offerId = ad.id || '';
-  document.getElementById('zc-gate-sponsor').textContent = 'Sponsored by ' + (ad.sponsor || 'ZeroClick.ai');
+  document.getElementById('zc-gate-sponsor').textContent = 'Sponsored by ' + (ad.sponsor || '');
   document.getElementById('zc-gate-hint').textContent = hint || 'Click the link above to continue';
 
   overlay.classList.add('active');
@@ -1626,12 +1670,12 @@ function renderAuditCard(data) {
 }
 
 function renderAdCard(ad, score) {
-  if (!ad) return '';
-  const sponsor = ad.sponsor || 'ZeroClick.ai';
+  if (!ad || !ad.sponsor || ad.skip) return '';
+  const sponsor = ad.sponsor;
   const title = ad.title || sponsor;
   const msg = (ad.message || '').substring(0, 180);
   const cta = ad.cta || 'Learn more';
-  const url = ad.click_url || 'https://zeroclick.ai';
+  const url = ad.click_url || '#';
   const scoreStr = score && score > 0 ? ' · ' + (score * 100).toFixed(0) + '% audit score' : '';
   let html = '<div class="zc-ad-card">';
   html += '<div class="zc-ad-header">';
@@ -1890,9 +1934,27 @@ function renderStrategyCard(data) {
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function formatMarkdown(text) {
-  let h = escHtml(text);
+  if (!text) return '';
+  var blocks = [];
+  var raw = text.replace(/```([\\s\\S]*?)```/g, function(m, code) {
+    var idx = blocks.length;
+    blocks.push(code);
+    return '%%CB' + idx + '%%';
+  });
+  var h = escHtml(raw);
+  h = h.replace(/^### (.+)$/gm, '<div style="font-size:13px;font-weight:600;color:var(--fg);margin:16px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)">$1</div>');
+  h = h.replace(/^## (.+)$/gm, '<div style="font-size:14px;font-weight:600;color:var(--fg);margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">$1</div>');
   h = h.replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
-  h = h.replace(/`([^`]+)`/g, '<code style="background:#111;padding:1px 4px;border-radius:3px">$1</code>');
+  h = h.replace(/`([^`]+)`/g, '<code style="background:#111;padding:1px 4px;border-radius:3px;font-size:0.92em">$1</code>');
+  h = h.replace(/^[\\-\\*] (.+)$/gm, '<div style="padding-left:14px;margin:3px 0;position:relative"><span style="position:absolute;left:0;color:var(--dim)">·</span>$1</div>');
+  h = h.replace(/^(\\d+)\\. (.+)$/gm, '<div style="padding-left:18px;margin:3px 0;position:relative"><span style="position:absolute;left:0;color:var(--dim)">$1.</span>$2</div>');
+  h = h.replace(/^[━─]{3,}$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:6px 0">');
+  h = h.replace(/\\n\\n/g, '<div style="height:10px"></div>');
+  h = h.replace(/\\n/g, '<br>');
+  blocks.forEach(function(code, i) {
+    h = h.replace('%%CB' + i + '%%',
+      '<pre style="background:#060606;border:1px solid var(--border);border-radius:4px;padding:10px 14px;font-size:11px;line-height:1.6;overflow-x:auto;margin:8px 0;white-space:pre-wrap;word-break:break-word;color:#bbb">' + escHtml(code.replace(/^\\n/, '')) + '</pre>');
+  });
   return h;
 }
 
@@ -1998,11 +2060,15 @@ async function sendMessage() {
                 if (el) {
                   if (!el.stepList) {
                     const sl = document.createElement('div');
-                    sl.style.cssText = 'margin-top:4px;padding-left:16px;font-size:10px;color:var(--dim2);line-height:1.6';
+                    sl.style.cssText = 'margin-top:6px;padding-left:0;font-size:10px;color:var(--dim);line-height:1.8;border-left:2px solid var(--border);padding-left:12px';
                     el.appendChild(sl);
                     el.stepList = sl;
                   }
-                  el.stepList.innerHTML += '<div>- ' + escHtml(d.message) + '</div>';
+                  const prev = el.stepList.querySelector('.step-active');
+                  if (prev) { prev.classList.remove('step-active'); prev.querySelector('.step-dot').style.background = 'var(--green)'; }
+                  const isCheck = d.message.startsWith('✓') || d.message.startsWith('✗');
+                  const dotCol = d.message.startsWith('✗') ? 'var(--red)' : (isCheck ? 'var(--green)' : 'var(--orange)');
+                  el.stepList.innerHTML += '<div class="step-active" style="display:flex;align-items:center;gap:6px;padding:1px 0"><span class="step-dot" style="width:5px;height:5px;border-radius:50%;background:' + dotCol + ';flex-shrink:0;' + (isCheck ? '' : 'animation:pulse 1s infinite') + '"></span><span style="color:' + (isCheck ? 'var(--dim)' : '#ccc') + '">' + escHtml(d.message) + '</span></div>';
                 }
               }
               scrollDown();
@@ -2062,13 +2128,29 @@ async function sendMessage() {
                 lastStrategyData = r;
                 auditCards += renderStrategyCard(r);
                 renderOrchestration(r);
-                // Show "Business" tab button as active indicator after strategy completes
+                // Highlight both Flow and Business tabs as ready
                 const btnBiz = document.getElementById('btn-biz');
+                const btnFlw = document.getElementById('btn-flow');
                 if (btnBiz) {
                   btnBiz.style.borderColor = 'var(--green)';
                   btnBiz.style.color = 'var(--green)';
                   btnBiz.title = 'Business dashboard ready — click to see agents running';
                 }
+                if (btnFlw) {
+                  btnFlw.style.borderColor = '#6ecbf5';
+                  btnFlw.style.color = '#6ecbf5';
+                  btnFlw.title = 'Flow view ready — click to see the full pipeline graph';
+                }
+                // Strategy nav banner
+                const nPurchased = (r.purchases||[]).filter(function(p){return p.purchased}).length;
+                const nAgents = Object.keys(r.mindra_agents||{}).length;
+                auditCards += '<div style="margin-top:12px;border:1px solid #1a2a1a;border-radius:6px;padding:12px 16px;background:#020a04;display:flex;gap:12px;align-items:center;flex-wrap:wrap">'
+                  + '<span style="color:var(--green);font-size:11px;font-weight:500">Strategy complete</span>'
+                  + '<span style="color:var(--dim);font-size:10px">' + nPurchased + ' purchased · ' + nAgents + ' Mindra agents</span>'
+                  + '<span style="flex:1"></span>'
+                  + '<button onclick="showView(\'flow\')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid #6ecbf5;color:#6ecbf5;padding:4px 12px;border-radius:3px;cursor:pointer">View Flow →</button>'
+                  + '<button onclick="showView(\'biz\')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--green);color:var(--green);padding:4px 12px;border-radius:3px;cursor:pointer">Business →</button>'
+                  + '</div>';
                 // ZeroClick ad handled by the gate overlay
                 if (r.zeroclick_ad && !adGateActive) {
                   showAdGate(r.zeroclick_ad, 'Click to continue chatting');
