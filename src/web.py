@@ -472,23 +472,36 @@ function renderAdCard(ad, score) {
 function renderOrchestration(data) {
   if (!data) return;
 
-  // Count apify actors found
-  const nApify = (data.apify_actors || []).length;
-  orchSetAgent('exa',        'done',    'research done');
-  orchSetAgent('apify',      'done',    nApify + ' actors');
+  // Exa: only mark done if there are actual exa highlights
+  const exaData = data.exa_research || {};
+  const hasExa = exaData.highlights && exaData.highlights.length > 0;
+  orchSetAgent('exa', hasExa ? 'done' : 'idle', hasExa ? 'highlights found' : 'no key — skipped');
 
+  // Apify
+  const nApify = (data.apify_actors || []).length;
+  orchSetAgent('apify', nApify > 0 ? 'done' : 'idle', nApify > 0 ? nApify + ' actors' : 'no results');
+
+  // OpenAI audit
   const nAudited = (data.audit_scores || []).filter(s => !s.error).length;
   orchSetAgent('openai', nAudited > 0 ? 'done' : 'idle', nAudited + ' audited');
 
+  // Nevermined
   const purchases = data.purchases || data.agents || [];
   const nBought = purchases.filter(p => p.purchased).length;
-  const nFailed = purchases.filter(p => !p.purchased && !p.skipped).length;
-  orchSetAgent('nevermined', nBought > 0 ? 'done' : (nFailed > 0 ? 'failed' : 'idle'), nBought + ' bought');
+  const nFailed = purchases.filter(p => !p.purchased && p.error);
+  const nvmStatus = nBought > 0 ? 'done' : (nFailed.length > 0 ? 'failed' : 'idle');
+  const nvmMsg = nBought > 0 ? nBought + ' purchased' : (nFailed.length > 0 ? nFailed.length + ' failed' : 'no purchases');
+  orchSetAgent('nevermined', nvmStatus, nvmMsg);
 
-  // Update Trinity + fiat-team boxes based on which vendors were purchased
+  // Trinity: find any purchase from abilityai OR any that worked
   const trinityPurchase = purchases.find(p => (p.endpoint||p.team||'').includes('abilityai'));
-  orchSetAgent('trinity', trinityPurchase ? (trinityPurchase.purchased ? 'done' : 'failed') : 'idle',
-               trinityPurchase ? (trinityPurchase.purchased ? 'purchased ✓' : 'failed') : 'standby');
+  if (trinityPurchase) {
+    const trinityOk = trinityPurchase.purchased;
+    orchSetAgent('trinity', trinityOk ? 'done' : 'failed',
+      trinityOk ? 'purchased ✓' : (trinityPurchase.error||'failed').substring(0,20));
+  } else {
+    orchSetAgent('trinity', 'idle', 'not called');
+  }
 
   // Update buyer purchase list with team labels
   const txBuyer = document.getElementById('txs-buyer');
@@ -583,6 +596,7 @@ function renderStrategyCard(data) {
   // Purchases
   const purchases = data.purchases || [];
   const bought = purchases.filter(p => p.purchased);
+  const failed = purchases.filter(p => !p.purchased && !p.skipped && p.error);
   if (bought.length) {
     html += '<div style="margin:6px 0;font-size:11px"><span style="color:var(--green)">✓ Purchased ' + bought.length + ' service(s):</span><br>';
     bought.forEach(p => {
@@ -594,27 +608,22 @@ function renderStrategyCard(data) {
     });
     html += '</div>';
   }
+  if (failed.length) {
+    html += '<div style="margin:6px 0;font-size:10px"><span style="color:var(--orange)">Attempted but failed:</span><br>';
+    failed.forEach(p => {
+      const shortErr = (p.error||'').substring(0,90);
+      html += '<div style="color:var(--dim);margin-top:3px">· ' + escHtml(p.team||p.vendor||'') + ' — <span style="color:var(--red)">' + escHtml(shortErr) + '</span></div>';
+    });
+    html += '</div>';
+  }
 
   // ROI
   const roi = data.roi_analysis || {};
   if (roi.decision) {
     const cls = roi.decision.includes('BUY') ? 'var(--green)' : 'var(--orange)';
     html += '<div style="margin-top:8px;font-size:11px;border-top:1px solid var(--border);padding-top:6px">';
-    html += '<span style="color:var(--fg)">ROI decision: </span><span style="color:'+cls+'">' + escHtml(roi.decision) + '</span>';
-    if (roi.top_pick) html += ' · top pick: <span style="color:var(--dim)">' + escHtml(roi.top_pick) + '</span>';
-    html += '</div>';
-  }
-
-  // Plans that need browser checkout to unlock
-  const needsPlan = (roi.needs_plan_purchase || []).filter(p => p.url);
-  if (needsPlan.length) {
-    html += '<div style="margin-top:8px;padding:8px 10px;border:1px solid var(--orange);border-radius:4px;font-size:11px">';
-    html += '<div style="color:var(--orange);margin-bottom:6px;font-size:10px;letter-spacing:0.05em;text-transform:uppercase">Unlock paid plans (one-time)</div>';
-    needsPlan.forEach(p => {
-      html += '<div style="margin-top:4px">· <span style="color:var(--fg)">' + escHtml(p.team||'Team') + '</span> — ';
-      html += '<a href="' + escHtml(p.url) + '" target="_blank" style="color:var(--orange);text-decoration:none">checkout → nevermined.app</a></div>';
-    });
-    html += '<div style="margin-top:6px;font-size:10px;color:var(--dim)">Log in as justin.07823@gmail.com · card: 4242 4242 4242 4242 · any expiry/CVC</div>';
+    html += 'ROI: <span style="color:'+cls+'">' + escHtml(roi.decision) + '</span>';
+    if (roi.top_pick) html += ' · top pick: ' + escHtml(roi.top_pick);
     html += '</div>';
   }
 

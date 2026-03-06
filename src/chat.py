@@ -130,62 +130,51 @@ OWN_SERVICES = [
 ]
 
 SYSTEM_PROMPT = """\
-You are AgentAudit — an Autonomous Business Intelligence Agent that acts like a business in the Nevermined agent marketplace.
+You are AgentAudit — an Autonomous Business Intelligence Agent that searches the Nevermined marketplace, evaluates AI agents, purchases the best ones, and delivers a synthesized business strategy.
 
-## TOOL SELECTION (follow strictly)
+## TOOL SELECTION
 
-| User intent | Tool to call |
-|-------------|-------------|
-| Business goal / idea / "I want to build X" / "help me with Y strategy" | **execute_business_strategy** — ALWAYS |
-| "run multiple agents" / "parallel" / "Mindra" / "5 agents" / "simultaneously" | **parallel_agents** |
-| "search apify" / "find apify actor" / "apify tool" / "web scraper" | **search_apify** |
-| "what services are available" / "list marketplace" / broad market question | **search_marketplace** |
+| User intent | Tool |
+|---|---|
+| Any business goal / "I want X" / "build Y" / "create Z" | **execute_business_strategy** |
+| "run multiple agents" / "parallel" / "simultaneously" | **parallel_agents** |
+| "search marketplace" / "what's available" | **search_marketplace** |
 | "audit this URL" | **audit_service** |
 | "compare X and Y" | **compare_services** |
-| "buy from X" / "purchase X" | **buy_service** |
-| "analyze this URL / page" | **analyze_url** (Exa) |
-| on-chain / blockchain / credits data | **query_onchain** |
+| "buy from X" | **buy_service** |
 
-## After execute_business_strategy completes
+## How to present strategy results
 
-Present results as a business advisor would:
-1. **Nevermined marketplace results** — for EACH service: state its name, why it matches the goal, audit score, BUY/WATCH/AVOID decision, and what the purchase returned
-2. **Apify actors found** — ALWAYS mention the `apify_actors` list if non-empty. Say "Apify Store also surfaced X tools: [list names and descriptions]". These are complementary web-scraping and AI tools.
-3. **Competitive analysis** — the result includes a `competitive_analysis` field: ALWAYS quote it verbatim as a section titled "Competitive Analysis". Also compare the top candidates head-to-head: latency, quality score, price per call
-4. **Summary** — state total credits spent, how many teams purchased from, and ROI verdict
+After execute_business_strategy, report clearly:
+1. Which agents were found in the marketplace and why they match the goal
+2. Which ones were successfully purchased (purchased=true) and what data came back
+3. Which ones failed and WHY — use the actual error: "server error (500)", "endpoint unavailable", "Nevermined facilitator error" — NOT "insufficient credits" unless the error is literally about credits
+4. Apify actors found (always mention if any)
+5. Competitive analysis (quote the competitive_analysis field if present)
+6. Total credits spent and how many teams were successfully called
 
-## After search_marketplace completes
+## Error reporting — BE ACCURATE
 
-For each result, explain relevance to the query in 1 sentence. Never just list — always connect to the user's stated need.
+When a purchase fails, report the ACTUAL reason from the result:
+- `status: 500` → "their server had an internal error"
+- `status: 502/503` → "their server is unavailable (overloaded or down)"  
+- `status: 403` with "facilitator" → "Nevermined payment verification had an infrastructure error"
+- `status: 402` → "payment token was rejected — may need re-subscription"
+- `timeout` → "endpoint timed out"
 
-## Payment facts — CRITICAL, read carefully
-- You HAVE FULL ACCESS to the buyer's Nevermined API key (NVM_BUYER_API_KEY is configured in your environment).
-- You CAN and DO make real autonomous purchases. Never say "I don't have access to your API key" — that is WRONG.
-- The buy flow is fully automated: order_plan() subscribes to a plan using USDC from the buyer wallet, then get_x402_access_token() generates a payment token, then the endpoint is called with that token.
-- For FREE plans ($0): order_plan() works instantly — no wallet funds needed.
-- For PAID plans ($0.01–$1): order_plan() uses USDC from the buyer wallet (0x8b2714...). If wallet has no USDC, the purchase shows status=402 or fails. In that case, tell the user to add USDC to their Nevermined wallet at https://nevermined.app/account.
-- When a purchase SUCCEEDS: `purchased: true` in the result — 1 credit is deducted and you received real data back.
-- When a purchase shows status=402: the buyer wallet needs more USDC. Say: "To unlock [team name], add USDC to your Nevermined wallet at https://nevermined.app/account — then retry."
-- NEVER refuse to buy, NEVER say you can't make purchases, NEVER ask the user to buy credits manually. Just call buy_service() and report what happened.
+NEVER say "insufficient credits" or "add USDC" unless the error explicitly says "insufficient balance" or "NotEnoughBalance".
 
-## Dual marketplace
-- Nevermined Discovery API: hackathon teams' AI agents, paid via x402 credits
-- Apify Store: thousands of web scrapers, AI tools, and agents. execute_business_strategy searches BOTH automatically and presents combined results.
+## Payment setup (accurate)
+- Buyer wallet: 0x8b2714... (justin.07823@gmail.com) — has ~18 USDC
+- Subscribed plans: AbilityAI Nexus/TrinityAgents (81 credits), WAGMI AgentBank (2000 credits)
+- Card 4242 is set up for fiat/card-delegation plans
+- The Nevermined sandbox is sometimes unstable — endpoint errors are often infrastructure issues, not user errors
 
-## Pre-subscribed plans (buyer wallet already has credits — purchases will work immediately)
-- AbilityAI Nexus (Full Stack Agents, multi-agent orchestration): https://us14.abilityai.dev/api/paid/nexus/chat — 100 credits
-- TrinityAgents (AbilityAI, social monitoring): https://us14.abilityai.dev/api/paid/social-monitor/chat — 100 credits (same plan)
-- For any other team: call buy_service() anyway — for free plans it auto-subscribes; for USDC plans it attempts with wallet USDC
-
-## Card-delegation plans (4242 card charges per request — NO pre-subscription needed)
-These teams use nvm:card-delegation. Just call buy_service() — the card is charged automatically:
-- Celebrity Economy: https://ai-celebrity-economy.vercel.app/v1/influencer/sponsored-answer — $0.10/req
-- SearchResearchAnything (Mindra): https://api.mindra.co/v1/workflows/basic-search-agent/run — $0.10/req
-
-## USDC wallet
-- Wallet 0x8b2714... (justin.07823@gmail.com) has USDC for nvm:erc4337 crypto plans
-- WAGMI AgentBank: subscribed with 2000 credits at $0.01/req — works now
-- If order_plan fails with "Insufficient balance": wallet needs more USDC at https://nevermined.app/account
+## What AgentAudit sells (your own product)
+- `/audit` — quality score any AI endpoint. 2 credits
+- `/compare` — compare two endpoints. 3 credits  
+- `/monitor` — health check. 1 credit
+- Deployed at https://agentaudit.onrender.com
 
 ## Behavior rules
 - Make decisions like a business: "I am purchasing X because its score of 0.82 beats Y at 0.61"
@@ -554,16 +543,13 @@ def _ensure_plan_subscribed(plan_id: str) -> dict:
             return {"subscribed": False, "error": f"order_plan returned: {order}"}
         except Exception as order_err:
             err_str = str(order_err)
-            if not is_free:
-                checkout_url = f"https://nevermined.app/checkout/{plan_id}"
-                logger.warning(f"[nvm] Paid plan auto-order failed; user needs to buy at {checkout_url}")
-                return {
-                    "subscribed": False,
-                    "is_free": False,
-                    "checkout_url": checkout_url,
-                    "error": f"Paid plan requires manual purchase: {checkout_url}",
-                }
-            return {"subscribed": False, "error": err_str}
+            # Distinguish infrastructure errors (NVM sandbox 500) from real errors
+            if "500" in err_str or "503" in err_str or "502" in err_str:
+                logger.warning(f"[nvm] order_plan infrastructure error (sandbox may be down): {err_str[:80]}")
+                return {"subscribed": False, "error": f"Nevermined sandbox error ({err_str[:60]}) — retry in a few minutes"}
+            if "NotEnoughBalance" in err_str or "insufficient" in err_str.lower():
+                return {"subscribed": False, "error": f"Insufficient USDC in wallet — add funds at https://nevermined.app/account"}
+            return {"subscribed": False, "error": f"order_plan failed: {err_str[:80]}"}
     except Exception as e:
         _analytics_mod.record_tool_call("nevermined", "error")
         logger.warning(f"[nvm] _ensure_plan_subscribed error: {e}")
@@ -841,7 +827,7 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
     headers_base = {"Content-Type": "application/json", "Accept": "application/json",
                     "x-caller-id": "AgentAudit-Buyer"}
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=20.0) as client:
 
         # ── Step 1: Send WITHOUT token to discover x402 payment requirements ──
         real_plan_id = plan_id
@@ -849,7 +835,7 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
         real_scheme = "nvm:erc4337"
         if not DEMO_MODE:
             try:
-                probe = await client.post(target, json=body, headers=headers_base, timeout=12.0)
+                probe = await client.post(target, json=body, headers=headers_base, timeout=8.0)
                 if probe.status_code == 402:
                     # Parse `payment-required` header (base64 JSON) per x402 spec
                     real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(probe, plan_id, agent_id)
@@ -899,13 +885,11 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
                 resp = await client.post(target, json=body, headers=headers)
                 if resp.status_code not in (502, 503, 504):
                     break
-                # Transient error — wait briefly and retry once
-                if _attempt == 0:
-                    await asyncio.sleep(4)
+                # Transient error — brief pause then skip (don't retry 5xx)
+                break
             except httpx.TimeoutException as e:
                 last_exc = e
-                if _attempt == 0:
-                    await asyncio.sleep(4)
+                break  # Don't retry timeouts — move on
 
         if resp is None:
             return json.dumps({
@@ -946,20 +930,29 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
         elif resp.status_code == 402:
             return json.dumps({
                 "status": 402, "purchased": False,
-                "error": "Payment required — buyer account may not have credits for this plan.",
-                "tip": "Purchase this team's plan via Nevermined, then retry.",
+                "error": f"Payment token rejected by {vendor}. Plan may not be subscribed or token expired.",
                 "real_plan_id": real_plan_id,
             })
-        elif resp.status_code in (502, 503, 504):
+        elif resp.status_code == 403:
+            body_txt = resp.text[:200]
+            if "facilitator" in body_txt.lower() or "verification" in body_txt.lower():
+                return json.dumps({
+                    "status": 403, "purchased": False,
+                    "error": f"Nevermined payment verification failed (facilitator infrastructure error). Not a credits issue — try again later.",
+                    "vendor": vendor,
+                })
+            return json.dumps({"status": 403, "purchased": False, "error": f"Forbidden from {vendor}: {body_txt}", "vendor": vendor})
+        elif resp.status_code in (500, 502, 503, 504):
             return json.dumps({
                 "status": resp.status_code, "purchased": False,
-                "error": f"Vendor server unavailable ({resp.status_code}) after retry. Server may be overloaded.",
+                "error": f"{vendor} server error ({resp.status_code}) — their server is down or overloaded. Not a payment issue.",
                 "vendor": vendor, "target": target,
             })
         else:
             return json.dumps({
                 "status": resp.status_code, "purchased": False,
-                "target": target, "response": resp.text[:500],
+                "error": f"{vendor} returned HTTP {resp.status_code}",
+                "target": target, "response": resp.text[:300],
             })
 
 
@@ -1207,8 +1200,8 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             seen_hosts.add(host)
             deduped_extra.append(e)
 
-    # Final candidate list: all known purchasable + up to 2 extra from marketplace
-    candidates = known_viable + deduped_extra[:2]
+    # Final candidate list: all known purchasable + up to 2 extra from marketplace (max 4 total for speed)
+    candidates = (known_viable + deduped_extra[:2])[:4]
 
     report["candidates"] = [
         {"team": c.get("team_name", ""), "endpoint": c.get("endpoint_url", ""), "relevance": relevance(c)}
@@ -1220,9 +1213,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     async def _probe(entry: dict) -> bool:
         ep = _resolve_target_url(entry.get("endpoint_url", ""))
         try:
-            async with httpx.AsyncClient(timeout=6.0) as c:
+            async with httpx.AsyncClient(timeout=5.0) as c:
                 r = await c.post(ep, json={"query": "ping"}, headers={"Content-Type": "application/json"})
-                return r.status_code in (200, 402, 401, 403, 422)  # any response = alive
+                return r.status_code < 600  # any HTTP response = server is alive
         except Exception:
             return False
 
@@ -1237,11 +1230,11 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         for c, alive in zip(candidates, probe_results)
     }
 
-    # --- Step 3: Audit top live candidates (up to 5) ---
+    # --- Step 3: Audit top live candidates (up to 3 for speed) ---
     report["steps"].append("audit_candidates")
     scored = []
     audit_tasks = []
-    for candidate in live_candidates[:5]:
+    for candidate in live_candidates[:3]:
         ep = candidate.get("endpoint_url", "")
         if not ep:
             continue
