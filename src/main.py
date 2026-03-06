@@ -5,9 +5,9 @@ Deploy:       Render (see render.yaml)
 
 All routes served at the same URL:
   GET  /              → Dashboard (chat UI + stats)
-  POST /audit         → Sell: full quality audit (2 credits)
-  POST /compare       → Sell: side-by-side comparison (3 credits)
-  POST /monitor       → Sell: health check (1 credit)
+  POST /data          → Sell: Autonomous Business Intelligence (1 credit)
+                        — describe idea → marketplace + Apify + audit + buy + strategy
+                        — or provide endpoint_url for direct audit
   GET  /pricing       → Sell: pricing info (free)
   GET  /stats         → Sell: revenue analytics (free)
   GET  /services      → Sell: machine-readable service discovery (free)
@@ -40,9 +40,6 @@ if not os.environ.get("AUDIT_SERVICE_URL"):
 # ---------------------------------------------------------------------------
 
 from src.seller import (  # noqa: E402
-    audit_endpoint,
-    compare_endpoint,
-    monitor_endpoint,
     data_endpoint,
     sample_endpoint,
     pricing,
@@ -91,10 +88,10 @@ async def _register_with_discovery():
             "teamName": "AgentAudit",
             "category": "AI/ML",
             "description": (
-                "Autonomous Business Intelligence Agent. Describe a business goal — the agent searches "
-                "the marketplace, audits candidates with OpenAI + Exa, purchases the best services via "
-                "Nevermined x402, and returns a synthesized strategy. "
-                "Sells standalone services: audit any endpoint, compare two endpoints, health monitor."
+                "Autonomous Business Intelligence Agent. POST /data with a business idea "
+                "(e.g. {\"query\": \"build a fintech AI assistant\"}) and the agent searches "
+                "the Nevermined marketplace + Apify, audits candidates with OpenAI + Exa, "
+                "purchases the best services via x402, and returns a full business strategy."
             ),
             "keywords": ["audit", "quality", "business intelligence", "orchestration", "evaluation",
                          "comparison", "monitoring", "AI", "strategy", "research", "buyer", "seller"],
@@ -134,7 +131,7 @@ async def lifespan(app: FastAPI):
 # App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="AgentAudit", description="Quality scoring and trust layer for the agent economy", lifespan=lifespan)
+app = FastAPI(title="AgentAudit", description="Autonomous Business Intelligence — describe your idea, we find, audit, buy, and deliver a strategy", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -148,10 +145,7 @@ app.add_middleware(
 async def dashboard():
     return DASHBOARD_HTML
 
-# Seller routes
-app.add_api_route("/audit",   audit_endpoint,   methods=["POST"])
-app.add_api_route("/compare", compare_endpoint, methods=["POST"])
-app.add_api_route("/monitor", monitor_endpoint, methods=["POST"])
+# Seller routes — single paid endpoint
 app.add_api_route("/data",    data_endpoint,    methods=["POST"])
 app.add_api_route("/sample",  sample_endpoint,  methods=["GET"])
 app.add_api_route("/pricing", pricing,          methods=["GET"])

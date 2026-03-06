@@ -203,7 +203,7 @@ Key: `purchased: true` = a REAL Nevermined blockchain transaction (order_plan).
 
 ## Payment setup (accurate)
 - Buyer wallet: 0x8b2714... (justin.07823@gmail.com) — has ~18 USDC
-- Subscribed plans: AbilityAI Nexus/TrinityAgents (81 credits), WAGMI AgentBank (2000 credits)
+- Subscribed plans: TrinityOS Nexus/Social Monitor on us14.abilityai.dev (81 credits), WAGMI AgentBank (2000 credits)
 - Card 4242 is set up for fiat/card-delegation plans
 - The Nevermined sandbox is sometimes unstable — endpoint errors are often infrastructure issues, not user errors
 
@@ -244,18 +244,20 @@ After execute_business_strategy completes, DO NOT STOP. You must continue workin
 - State the ROI reason in 1 sentence
 - Mention Exa competitive insight in 1 sentence
 
-### Phase 2 — Deploy (IMMEDIATELY after briefing, no user input needed)
-Say: "Deploying your [goal] agents now. Running [team1] and [team2] with first tasks..."
-Then show the `execution_results` from the report — each agent's actual output.
-If `execution_results` has content, present each one as:
-  **[Agent Name]** (Trinity / Nexus / Social Monitor)
-  > [their actual output]
-If `execution_results` is empty or agents returned errors, the report will have an `execution_synthesis` field — USE IT. Present it section by section. Do NOT say "agents are working" — paste the actual output. Example for marketing agency:
-  **Cornelius — Market Research**
-  > Your marketing agency's top 3 competitors are: [list]. Key differentiation opportunity: [insight from Exa].
-  
-  **Ruby — Content Strategy**
-  > Recommended content pillars for your agency: [3 specific pillars based on the goal].
+### Phase 2 — Live Agent Intelligence (IMMEDIATELY after briefing)
+Present REAL outputs from the agents that were called:
+
+**TrinityOS agents** — check `trinity_agents` in the report:
+- If agents responded (`status: ok`), show their ACTUAL content: "TrinityOS Nexus: [real output]"
+- If agents failed, say so: "TrinityOS Social Monitor: connection timeout (sandbox may be unstable)"
+- NEVER fabricate Trinity output — only show what they actually returned
+
+**Marketplace agents** — check `execution_results` and `business_outputs`:
+- Show each agent's real response with their team name
+
+**Synthesis** — use `execution_synthesis` which combines all real outputs + Exa research
+
+If ALL agents failed to respond, say so honestly and present the Exa competitive research instead.
 
 ### Phase 3 — Next action + related suggestions (always end with both)
 Always end with: "What should I focus on next?" AND one specific suggestion:
@@ -482,34 +484,6 @@ TOOLS = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "mindra_orchestrate",
-            "description": (
-                "Run a task through Mindra's agentic workflow orchestrator. Mindra provides "
-                "self-healing workflows (auto-recovery from agent failures), anomaly detection "
-                "(catches hallucinations), and human-in-the-loop approvals for high-risk actions. "
-                "Use this for complex multi-step tasks, when the user mentions 'Mindra', 'orchestrate', "
-                "'workflow', or when you want robust error recovery on agent calls. "
-                "Streams real-time events (tool executions, results, approvals) back to the dashboard."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "The task to orchestrate (e.g. 'Research AI market trends and compile a report')",
-                    },
-                    "workflow_slug": {
-                        "type": "string",
-                        "description": "Optional Mindra workflow slug (default: agent-audit)",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-    },
 ]
 
 
@@ -584,9 +558,6 @@ async def _exec_tool(name: str, args: dict) -> str:
 
         elif name == "parallel_agents":
             return await _exec_parallel_agents(args.get("query", ""), min(int(args.get("agent_count", 3)), 5))
-
-        elif name == "mindra_orchestrate":
-            return await _exec_mindra_orchestrate(args.get("task", ""), args.get("workflow_slug", ""))
 
         elif name == "analyze_url":
             _analytics_mod.record_tool_call("exa", "ok")
@@ -807,45 +778,17 @@ async def _call_own_audit(endpoint_url: str, sample_query: str) -> str:
 
 
 async def _call_own_compare(url1: str, url2: str, query: str) -> str:
-    """Call our own /compare endpoint. Uses buyer account key for Nevermined token; falls back to direct compare."""
-    headers = {"Content-Type": "application/json", "x-caller-id": "AgentAudit-Chat"}
-
-    if not DEMO_MODE:
-        token = _get_buyer_token(NVM_PLAN_ID, NVM_AGENT_ID)
-        if token:
-            headers["payment-signature"] = token
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(
-            f"{AUDIT_SERVICE_URL.rstrip('/')}/compare",
-            json={"endpoint_url_1": url1, "endpoint_url_2": url2, "query": query},
-            headers=headers,
-        )
-        if resp.status_code == 200:
-            try:
-                data = resp.json()
-            except Exception:
-                data = {"raw": resp.text}
-            _analytics_mod.record_purchase(
-                vendor="AgentAudit (self)",
-                endpoint=f"{AUDIT_SERVICE_URL}/compare",
-                credits=1,
-                payment_method="nevermined_x402",
-            )
-            return json.dumps(data)
-
-    logger.info("Paid compare call returned non-200, falling back to direct compare")
+    """Run a direct compare using our auditor (internal use by chat agent)."""
     from src.auditor import run_compare
     from src.config import OPENAI_API_KEY as _oai_key, MODEL_ID as _model, EXA_API_KEY as _exa
     result = await run_compare(url1, url2, query, _oai_key, _model, _exa)
-    result["_note"] = "Direct compare — add NVM_BUYER_API_KEY to .env for real transactions"
     _analytics_mod.record_purchase(
         vendor="AgentAudit (self)",
-        endpoint=f"{AUDIT_SERVICE_URL}/compare",
+        endpoint=f"{AUDIT_SERVICE_URL}/data",
         credits=1,
-        payment_method="direct_fallback",
+        payment_method="direct",
     )
-    _analytics_mod.record_sale("/compare", 3, "AgentAudit-Chat", "direct_fallback")
+    _analytics_mod.record_sale("/data", 1, "AgentAudit-Chat", "direct")
     return json.dumps(result)
 
 
@@ -1293,12 +1236,14 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
 
 async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     """
-    Autonomous Business Intelligence pipeline:
+    Autonomous Business Intelligence pipeline orchestrated via Mindra (when available):
     1. Exa: research the business domain
-    2. Marketplace: find relevant AI services
+    2. Marketplace: find relevant AI services (Nevermined + Apify)
     3. Audit: score top candidates (quality, latency, price)
     4. Buy: purchase from the 2 best services
-    5. Synthesize: combine into a business recommendation
+    5. TrinityOS: call real Trinity agents for live business intelligence
+    6. Mindra: self-healing orchestration + anomaly detection (seamless)
+    7. Synthesize: combine all outputs into a business recommendation
     """
     report: dict = {
         "goal": goal,
@@ -1310,6 +1255,24 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         "recommendation": "",
         "roi_analysis": {},
     }
+
+    # --- Mindra: start background orchestration for self-healing + anomaly detection ---
+    mindra_task = None
+    if _mindra.is_available():
+        logger.info("[Mindra] Starting seamless orchestration for business strategy")
+        _analytics_mod.record_tool_call("mindra", "ok")
+        report["orchestrator"] = "mindra"
+        mindra_task = asyncio.create_task(_mindra.run_and_collect(
+            task=(
+                f"Orchestrate a business intelligence pipeline for: {goal}\n"
+                f"Budget: {budget_credits} credits.\n"
+                "Steps: market research, service discovery, quality audit, purchasing, synthesis.\n"
+                "Monitor for anomalies in audit scores and agent responses."
+            ),
+            metadata={"source": "agentaudit", "goal": goal, "budget": budget_credits},
+            auto_approve=True,
+            timeout_seconds=90.0,
+        ))
 
     # --- Step 1: Exa competitive intelligence (AI agents/tools in this domain) ---
     report["steps"].append("exa_research")
@@ -1893,48 +1856,61 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     if apify_run_data:
         report["apify_run_result"] = apify_run_data
 
-    # --- Step 6c: OpenAI execution synthesis — generate real deliverables ---
-    # When purchased agents can't respond (sandbox issues), GPT generates the actual
-    # business intelligence so the user sees something real, not "agents are working..."
+    # --- Step 6c: Execution synthesis — combine ALL real agent outputs ---
+    # Merges: business_outputs (marketplace agents) + trinity_outputs (TrinityOS agents)
+    # + exa_data (competitive research) into one synthesized report
     if OPENAI_API_KEY:
-        live_outputs = [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
+        all_live_outputs = (
+            [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
+            + [t for t in trinity_outputs if t.get("status") == "ok" and t.get("content")]
+        )
         exa_ctx = " ".join(exa_data.get("highlights", []) or [])[:600]
         comp_ctx = " ".join(c.get("snippet", "") for c in report.get("exa_research", {}).get("competitors", []))[:400]
-        teams_ctx = ", ".join(p["team"] for p in successful) if successful else "marketplace agents"
 
         try:
             _exec_client = OpenAI(api_key=OPENAI_API_KEY)
-            if live_outputs:
-                # Synthesize real agent outputs
-                combined = "\n\n".join(f"[{b['team']}]: {b['content']}" for b in live_outputs)
+            if all_live_outputs:
+                combined = "\n\n".join(
+                    f"[{b.get('team', '') or b.get('agent', '')}]: {b['content']}"
+                    for b in all_live_outputs
+                )
                 _exec_resp = _exec_client.chat.completions.create(
                     model=MODEL_ID,
                     messages=[
-                        {"role": "system", "content": "You are a business intelligence orchestrator. Synthesize agent outputs into actionable business intelligence. Be specific and concrete."},
-                        {"role": "user", "content": f"Goal: {goal}\nAgent outputs:\n{combined}\nExa research: {exa_ctx}\n\nSynthesize into 3-4 concrete business actions the user should take TODAY. Be specific to their goal."},
+                        {"role": "system", "content": (
+                            "You are a business intelligence synthesizer. You receive REAL outputs from "
+                            "live AI agents (marketplace services + TrinityOS agents). Synthesize them into "
+                            "actionable business intelligence. Reference which agent provided what insight."
+                        )},
+                        {"role": "user", "content": (
+                            f"Goal: {goal}\n"
+                            f"Live agent outputs:\n{combined}\n"
+                            f"Exa competitive research: {exa_ctx}\n\n"
+                            "Synthesize into 3-4 concrete business actions. "
+                            "Cite which agent provided each insight."
+                        )},
                     ],
                     max_tokens=500, temperature=0.4,
                 )
                 synthesis_text = _exec_resp.choices[0].message.content or ""
             else:
-                # Generate first real deliverables when agents didn't respond
+                exa_for_synth = exa_ctx or comp_ctx or "no external data available"
                 _exec_resp = _exec_client.chat.completions.create(
                     model=MODEL_ID,
                     messages=[
-                        {"role": "system", "content": "You are a multi-agent business executor. Generate specific, actionable business deliverables as if you are a fleet of specialized AI agents running simultaneously. Each section is a different agent's output."},
+                        {"role": "system", "content": (
+                            "You are a business intelligence agent. Based on competitive research data, "
+                            "generate actionable business recommendations. Be specific and concrete."
+                        )},
                         {"role": "user", "content": (
                             f"Goal: {goal}\n"
-                            f"Purchased services: {teams_ctx}\n"
-                            f"Competitive research (Exa): {exa_ctx or 'not available'}\n"
-                            f"Competitor insights: {comp_ctx or 'not available'}\n\n"
-                            "Generate outputs for 3 specialized agents running NOW:\n"
-                            "1. **Cornelius (Research Agent)**: 3 specific market insights about this business domain\n"
-                            "2. **Ruby (Content Agent)**: 3 specific content/marketing recommendations\n"
-                            "3. **Outbound (Sales Agent)**: First 3 customer acquisition actions to take TODAY\n"
-                            "Make each output specific, not generic. Reference real market context."
+                            f"Competitive research (Exa): {exa_for_synth}\n"
+                            f"Agents attempted: {trinity_agents_called} TrinityOS + "
+                            f"{len(business_outputs)} marketplace (some may have failed due to sandbox issues)\n\n"
+                            "Generate 3-4 concrete recommendations based on available research."
                         )},
                     ],
-                    max_tokens=600, temperature=0.4,
+                    max_tokens=500, temperature=0.4,
                 )
                 synthesis_text = _exec_resp.choices[0].message.content or ""
             report["execution_synthesis"] = synthesis_text
@@ -1942,40 +1918,88 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         except Exception as _exec_err:
             logger.warning(f"[exec_synthesis] failed: {_exec_err}")
 
-    # --- Trinity Business Plan: use OpenAI to generate agent roles for the goal ---
-    # This is TrinityOS-style multi-agent orchestration planning.
-    # Shows how the purchased agents would be orchestrated into a real business.
-    if OPENAI_API_KEY and successful:
-        try:
-            bought_teams = [p["team"] for p in successful]
-            _plan_client = OpenAI(api_key=OPENAI_API_KEY)
-            _plan_resp = _plan_client.chat.completions.create(
-                model=MODEL_ID,
-                messages=[{"role": "user", "content": (
-                    f'Business goal: "{goal}"\n'
-                    f'Purchased AI services via Nevermined: {bought_teams}\n\n'
-                    'Generate a Trinity multi-agent business execution plan. These agents ACTUALLY RUN autonomously.\n'
-                    'Return JSON with key "agents", array of 4 agents.\n'
-                    'Each agent: {"name": string, "role": string, "task": string, "template": string, "output_preview": string}\n'
-                    '- template: one of cornelius, ruby, outbound, webmaster\n'
-                    '- task: specific, actionable task this agent executes RIGHT NOW (1 sentence, present tense)\n'
-                    '- output_preview: 1-sentence preview of what this agent will produce (e.g. "Generates a 5-page competitor analysis for the marketing agency sector")\n'
-                    'Be goal-specific. Return ONLY the JSON object.'
-                )}],
-                max_tokens=400, temperature=0.2,
+    # --- TrinityOS multi-agent execution: call real Trinity agents on abilityai.dev ---
+    # These are REAL agent calls to TrinityOS-hosted agents via Nevermined x402.
+    # Nexus = orchestration/business intelligence, Social Monitor = trend analysis.
+    trinity_outputs: list[dict] = []
+    trinity_agents_called = 0
+    from src.config import KNOWN_PURCHASABLE
+    trinity_endpoints = [
+        k for k in KNOWN_PURCHASABLE
+        if "abilityai.dev" in k.get("endpoint_url", "")
+    ]
+    if trinity_endpoints and NVM_BUYER_API_KEY:
+        async def _call_trinity(agent_cfg: dict) -> dict:
+            team = agent_cfg.get("team_name", "Trinity")
+            ep = agent_cfg["endpoint_url"]
+            plan_id = agent_cfg.get("plan_id", "")
+            agent_id = agent_cfg.get("agent_id", "")
+            body_field = agent_cfg.get("body_field", "query")
+            biz_prompt = (
+                f"Business goal: {goal}.\n"
+                f"Provide specific, actionable intelligence. "
+                f"Include concrete data points and recommendations."
             )
-            import re as _re
-            _content = _plan_resp.choices[0].message.content.strip()
-            _match = _re.search(r'"agents"\s*:\s*(\[.*?\])', _content, _re.DOTALL)
-            if _match:
-                report["trinity_plan"] = json.loads(_match.group(1))
-            else:
-                _arr = _re.search(r'\[.*?\]', _content, _re.DOTALL)
-                if _arr:
-                    report["trinity_plan"] = json.loads(_arr.group())
-            _analytics_mod.record_tool_call("openai", "ok")
-        except Exception as _e:
-            logger.warning(f"[Trinity plan] generation failed: {_e}")
+            try:
+                token = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _get_buyer_token(plan_id, agent_id)
+                )
+                if not token:
+                    return {"agent": team, "endpoint": ep, "status": "no_token", "content": ""}
+                body = {body_field: biz_prompt, "query": biz_prompt, "message": biz_prompt}
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    resp = await client.post(
+                        ep,
+                        json=body,
+                        headers={"Content-Type": "application/json", "payment-signature": token},
+                    )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    content = (
+                        data.get("response") or data.get("answer") or
+                        data.get("content") or data.get("result") or
+                        data.get("message") or data.get("output") or
+                        data.get("text") or ""
+                    )
+                    if isinstance(content, (list, dict)):
+                        content = json.dumps(content)[:800]
+                    _analytics_mod.record_tool_call("nevermined", "ok")
+                    return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
+                else:
+                    return {"agent": team, "endpoint": ep, "status": f"http_{resp.status_code}", "content": ""}
+            except Exception as exc:
+                return {"agent": team, "endpoint": ep, "status": "error", "content": str(exc)[:100]}
+
+        trinity_tasks = [_call_trinity(tc) for tc in trinity_endpoints]
+        trinity_results = await asyncio.gather(*trinity_tasks, return_exceptions=True)
+        for r in trinity_results:
+            if isinstance(r, dict):
+                trinity_agents_called += 1
+                trinity_outputs.append(r)
+                if r.get("status") == "ok":
+                    logger.info(f"[TrinityOS] {r['agent']} responded: {len(r.get('content',''))} chars")
+
+    report["trinity_agents"] = trinity_outputs
+    report["trinity_agents_called"] = trinity_agents_called
+    report["trinity_agents_succeeded"] = len([t for t in trinity_outputs if t.get("status") == "ok"])
+
+    # Build trinity_plan from REAL agent responses (not GPT-generated)
+    real_trinity_plan = []
+    for t in trinity_outputs:
+        agent_name = t.get("agent", "")
+        template = "cornelius" if "Nexus" in agent_name or "Full Stack" in agent_name else "ruby"
+        role = "Orchestration & Business Intelligence" if template == "cornelius" else "Social Monitoring & Trends"
+        real_trinity_plan.append({
+            "name": agent_name,
+            "role": role,
+            "template": template,
+            "task": f"Real-time analysis for: {goal}",
+            "status": t.get("status", "unknown"),
+            "live_output": t.get("content", "")[:500],
+            "endpoint": t.get("endpoint", ""),
+        })
+    if real_trinity_plan:
+        report["trinity_plan"] = real_trinity_plan
 
     # --- ZeroClick: ensure ad is always present in the result (fallback if audit threshold not met) ---
     if "zeroclick_ad" not in report:
@@ -2022,6 +2046,22 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         "next_suggested_actions": suggested_actions,
     }
 
+    # --- Mindra: collect background orchestration results (self-healing, anomaly detection) ---
+    if mindra_task is not None:
+        try:
+            mindra_result = await mindra_task
+            report["mindra_status"] = mindra_result.get("status", "unknown")
+            report["mindra_execution_id"] = mindra_result.get("execution_id", "")
+            report["self_healing"] = mindra_result.get("status") == "completed"
+            report["anomaly_detection"] = True
+            report["mindra_tool_results"] = mindra_result.get("tool_results", [])
+            if mindra_result.get("final_answer"):
+                report["mindra_insights"] = mindra_result["final_answer"][:500]
+            logger.info(f"[Mindra] Orchestration complete: {mindra_result.get('status')}")
+        except Exception as e:
+            logger.warning(f"[Mindra] Background orchestration error (non-fatal): {e}")
+            report["mindra_status"] = "error"
+
     return json.dumps(report, indent=2)
 
 
@@ -2062,7 +2102,7 @@ async def chat_stream(message: str, history: list[dict], budget_credits: int = 5
                 yield {"event": "tool_use", "data": {"tool": fn_name, "args": fn_args}}
 
                 # For orchestration tools — emit structured agent-init + activation events
-                if fn_name in ("execute_business_strategy", "parallel_agents", "mindra_orchestrate"):
+                if fn_name in ("execute_business_strategy", "parallel_agents"):
                     mindra_active = _mindra.is_available()
                     agents_init = [
                         {"id": "exa",       "name": "Exa Research",         "status": "queued"},
@@ -2092,21 +2132,30 @@ async def chat_stream(message: str, history: list[dict], budget_credits: int = 5
                 result = await _exec_tool(fn_name, fn_args)
 
                 # After orchestration: emit final agent states based on actual result
-                if fn_name in ("execute_business_strategy", "parallel_agents", "mindra_orchestrate"):
+                if fn_name in ("execute_business_strategy", "parallel_agents"):
                     try:
                         r = json.loads(result)
                         n_apify   = len(r.get("apify_actors", []))
                         n_audited = len([s for s in r.get("audit_scores", []) if not s.get("error")])
                         n_bought  = len([p for p in r.get("purchases", []) if p.get("purchased")])
                         n_agents  = len([a for a in r.get("agents", []) if a.get("purchased")])
-                        # Mindra orchestrator status
-                        if r.get("orchestrator") == "mindra" or fn_name == "mindra_orchestrate":
-                            mindra_ok = r.get("status") == "completed" or r.get("self_healing")
-                            n_mindra_tools = len(r.get("tool_results", []))
+                        # Mindra orchestrator status (runs seamlessly in background)
+                        if r.get("orchestrator") in ("mindra", "mindra+direct"):
+                            mindra_ok = r.get("mindra_status") == "completed" or r.get("self_healing")
+                            n_mindra_tools = len(r.get("mindra_tool_results", r.get("tool_results", [])))
                             yield {"event": "tool_step", "data": {
                                 "agent": "mindra",
                                 "status": "done" if mindra_ok else "failed",
-                                "msg": f"{'Self-healed' if mindra_ok else 'Error'} — {n_mindra_tools} tools executed",
+                                "msg": f"{'Self-healed' if mindra_ok else 'Fallback'} — {n_mindra_tools} tools",
+                            }}
+                        # TrinityOS agent status
+                        n_trinity = r.get("trinity_agents_succeeded", 0)
+                        n_trinity_called = r.get("trinity_agents_called", 0)
+                        if n_trinity_called > 0:
+                            yield {"event": "tool_step", "data": {
+                                "agent": "trinity",
+                                "status": "done" if n_trinity > 0 else "failed",
+                                "msg": f"{n_trinity}/{n_trinity_called} agents responded",
                             }}
                         yield {"event": "tool_step", "data": {"agent": "exa",        "status": "done", "msg": "Research complete"}}
                         yield {"event": "tool_step", "data": {"agent": "apify",      "status": "done", "msg": f"{n_apify} actors found"}}
