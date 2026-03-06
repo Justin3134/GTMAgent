@@ -51,18 +51,40 @@ async def _fetch_discovery_api(nvm_api_key: str) -> list[dict]:
             data = resp.json()
             sellers = data.get("sellers", [])
             entries = []
+            seen_eps = set()
             for s in sellers:
                 endpoint = s.get("endpointUrl", "").strip()
                 if not endpoint:
                     continue
-                plan_ids = s.get("planIds", [])
+                # Skip non-reachable endpoints
+                if "localhost" in endpoint or not endpoint.startswith("http"):
+                    continue
+                if endpoint in seen_eps:
+                    continue
+                seen_eps.add(endpoint)
+
+                # Extract plan info from planPricing (correct field, not planIds)
+                plan_pricing = s.get("planPricing") or []
+                plan_id = ""
+                payment_type = "crypto"
+                price_per_request = ""
+                if plan_pricing:
+                    # Prefer fiat plan if available (card-delegation, no USDC needed)
+                    fiat_plans = [p for p in plan_pricing if p.get("paymentType") == "fiat"]
+                    crypto_plans = [p for p in plan_pricing if p.get("paymentType") != "fiat"]
+                    chosen = fiat_plans[0] if fiat_plans else (crypto_plans[0] if crypto_plans else {})
+                    plan_id = chosen.get("planDid", "")
+                    payment_type = chosen.get("paymentType", "crypto")
+                    price_per_request = chosen.get("pricePerRequestFormatted", "")
+
                 entries.append({
                     "team_name": s.get("teamName") or s.get("name", "Unknown"),
                     "endpoint_url": endpoint,
                     "description": s.get("description", ""),
-                    "plan_id": plan_ids[0] if plan_ids else "",
-                    "agent_id": s.get("nvmAgentId", ""),
-                    "price_credits": str(s.get("pricing", {}).get("perRequest", "1")),
+                    "plan_id": plan_id,
+                    "agent_id": s.get("agentDid", "") or s.get("nvmAgentId", ""),
+                    "price_credits": price_per_request or str(s.get("pricing", {}).get("perRequest", "")),
+                    "payment_type": payment_type,
                     "category": s.get("category", ""),
                     "keywords": s.get("keywords", []),
                     "wallet_address": s.get("walletAddress", ""),

@@ -36,6 +36,17 @@ KNOWN_PURCHASABLE = [
         "category": "AI,orchestration",
     },
     {
+        # AbilityAI social monitor — same plan as nexus (62132339…), different agent_id
+        "team_name": "TrinityAgents",
+        "description": "AbilityAI social monitor — real-time social media trend analysis and monitoring",
+        "endpoint_url": "https://us14.abilityai.dev/api/paid/social-monitor/chat",
+        "plan_id": "62132339823439076950399695238634927378738244877172775303591114485168828025410",
+        "agent_id": "102575793179870454885693749389321147500444253017787287080547662366660764018939",
+        "body_field": "message",
+        "price_credits": "free",
+        "category": "social,monitoring,trends",
+    },
+    {
         "team_name": "Mog Markets",
         "description": "Nevermined hackathon guide agent — finds and queries marketplace services",
         "endpoint_url": "https://beneficial-essence-production-99c7.up.railway.app/mcp",
@@ -52,6 +63,17 @@ KNOWN_PURCHASABLE = [
         "agent_id": "48640872261251869030033108052183526690631027622085978188430169084356856647939",
         "price_credits": "free",
         "category": "marketplace,api",
+    },
+    {
+        # WAGMI / AgentBank — paid plan ($0.01/credit). Subscribe at checkout URL below.
+        # Checkout: https://nevermined.app/checkout/22048418573188197583118225823590719469073032209055332683827376109982321424950
+        "team_name": "WAGMI",
+        "description": "AgentBank — autonomous DeFi deposit and yield optimization agent",
+        "endpoint_url": "https://agentbank-nine.vercel.app/api/deposit",
+        "plan_id": "22048418573188197583118225823590719469073032209055332683827376109982321424950",
+        "agent_id": "103952894214985075133486264961407358632754398912965838438307744576640790529205",
+        "price_credits": "$0.01",
+        "category": "DeFi,finance,yield",
     },
 ]
 

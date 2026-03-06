@@ -159,10 +159,13 @@ Present results as a business advisor would. For EACH service found:
 For each result, explain relevance to the query in 1 sentence. Never just list — always connect to the user's stated need.
 
 ## Payment facts
-- Buying = 1 credit deducted from the buyer's Nevermined x402 account (no runtime credit card)
+- Buying = 1 credit deducted from the buyer's Nevermined x402 account
 - When you purchase from a team, you receive their service's actual response data
 - You are ALSO a seller — your /data endpoint is payment-gated and returns business intelligence
-- If a purchase fails with "insufficient credits", the buyer's NVM account does not have credits on that team's plan. Inform the user they need to purchase that plan first.
+- If a purchase returns status=402 or "insufficient credits": the buyer hasn't subscribed to that team's plan yet.
+  When this happens, ALWAYS show the checkout URL: https://nevermined.app/checkout/<plan_id>
+  Tell the user: "To unlock [team name], go to https://nevermined.app/checkout/<plan_id> (logged in as tradingancient@gmail.com) and pay with card 4242... — then retry."
+- `needs_plan_purchase` in ROI analysis = list of plans that need a one-time browser checkout to unlock
 
 ## Dual marketplace
 - Nevermined Discovery API: hackathon teams' AI agents, paid via x402 credits
@@ -802,15 +805,17 @@ async def _call_external_service(endpoint_url: str, query: str, plan_id: str, ag
         if not DEMO_MODE and real_plan_id:
             subscription_info = _ensure_plan_subscribed(real_plan_id)
             checkout_url = subscription_info.get("checkout_url", "")
-            if subscription_info.get("subscribed"):
-                # ── Step 3: Get x402 access token ──
-                token = _get_buyer_token(real_plan_id, real_agent_id)
-                if token:
-                    if is_mcp:
-                        headers["authorization"] = f"Bearer {token}"
-                    else:
-                        headers["payment-signature"] = token
-                    logger.info(f"[x402] token attached for {vendor} (new_sub={subscription_info.get('was_new')})")
+            # ── Step 3: Get x402 access token ──
+            # Always attempt token generation even if subscription check failed —
+            # card-delegation plans (nvm:card-delegation) don't require a pre-subscription;
+            # get_x402_access_token() works directly and charges the saved card per-request.
+            token = _get_buyer_token(real_plan_id, real_agent_id)
+            if token:
+                if is_mcp:
+                    headers["authorization"] = f"Bearer {token}"
+                else:
+                    headers["payment-signature"] = token
+                logger.info(f"[x402] token attached for {vendor} (subscribed={subscription_info.get('subscribed')}, new_sub={subscription_info.get('was_new')})")
             else:
                 logger.warning(f"[x402] no token for {vendor}: {subscription_info.get('error','')[:80]}")
 

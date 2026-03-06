@@ -611,6 +611,19 @@ function renderStrategyCard(data) {
     html += '</div>';
   }
 
+  // Plans that need browser checkout to unlock
+  const needsPlan = (roi.needs_plan_purchase || []).filter(p => p.url);
+  if (needsPlan.length) {
+    html += '<div style="margin-top:8px;padding:8px 10px;border:1px solid var(--orange);border-radius:4px;font-size:11px">';
+    html += '<div style="color:var(--orange);margin-bottom:6px;font-size:10px;letter-spacing:0.05em;text-transform:uppercase">Unlock paid plans (one-time)</div>';
+    needsPlan.forEach(p => {
+      html += '<div style="margin-top:4px">· <span style="color:var(--fg)">' + escHtml(p.team||'Team') + '</span> — ';
+      html += '<a href="' + escHtml(p.url) + '" target="_blank" style="color:var(--orange);text-decoration:none">checkout → nevermined.app</a></div>';
+    });
+    html += '<div style="margin-top:6px;font-size:10px;color:var(--dim)">Log in as tradingancient@gmail.com · card: 4242 4242 4242 4242 · any expiry/CVC</div>';
+    html += '</div>';
+  }
+
   html += '</div>';
   // Append ZeroClick sponsored ad if the strategy result includes one
   if (data.zeroclick_ad) html += renderAdCard(data.zeroclick_ad, roi.top_score || 0);
