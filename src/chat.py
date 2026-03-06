@@ -797,6 +797,29 @@ async def _call_own_compare(url1: str, url2: str, query: str) -> str:
     return json.dumps(result)
 
 
+def _extract_agent_content(data: dict) -> str:
+    """Extract readable text from common agent response shapes."""
+    content = (
+        data.get("response") or data.get("answer") or
+        data.get("content") or data.get("result") or
+        data.get("message") or data.get("output") or
+        data.get("text") or ""
+    )
+    if isinstance(content, list):
+        content = "\n".join(str(c) for c in content[:5])
+    elif isinstance(content, dict):
+        content = content.get("text") or content.get("content") or str(content)[:300]
+    if not content and isinstance(data, dict):
+        result = data.get("result", {})
+        if isinstance(result, dict):
+            items = result.get("content", [])
+            if isinstance(items, list):
+                content = " ".join(i.get("text", "") for i in items if isinstance(i, dict))
+    if not content:
+        content = str(data)[:400]
+    return content
+
+
 def _resolve_target_url(endpoint_url: str) -> str:
     """
     Determine the correct URL to POST to.
@@ -1763,7 +1786,11 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     business_outputs: list[dict] = []
     if successful and NVM_BUYER_API_KEY:
         async def _exec_agent(p: dict) -> dict:
-            """Call a purchased agent endpoint with the goal and return its response."""
+            """Call a purchased agent endpoint with the goal and return its response.
+
+            Uses proper x402 scheme detection: probes the endpoint first, then
+            picks card-delegation or crypto token based on what the seller requires.
+            """
             team = p.get("team", "")
             ep = p.get("endpoint", "")
             plan_id = p.get("plan_id", "")
@@ -1771,53 +1798,80 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
             if not ep or not plan_id:
                 return {"team": team, "status": "skip", "reason": "no endpoint or plan_id"}
             try:
-                token = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _get_buyer_token(plan_id, agent_id)
-                )
-                if not token:
-                    return {"team": team, "status": "no_token"}
-                # Build a task-specific query (not generic — helps Trinity agents give useful output)
                 biz_query = (
                     f"Business goal: {goal}.\n"
                     f"Task: Provide specific, actionable intelligence for this business RIGHT NOW.\n"
                     f"Include: (1) 3 concrete market insights, (2) top 3 immediate actions to take today, "
                     f"(3) one key metric to track. Be direct and specific — no generic advice."
                 )
+                body = {"message": biz_query, "query": biz_query, "prompt": biz_query}
+                headers_base = {"Content-Type": "application/json", "x-caller-id": "GTMAgent-Buyer"}
+
+                real_plan_id = plan_id
+                real_agent_id = agent_id
+                real_scheme = "nvm:erc4337"
+
                 async with httpx.AsyncClient(timeout=45.0) as client:
-                    resp = await client.post(
-                        ep,
-                        json={"message": biz_query, "query": biz_query, "prompt": biz_query},
-                        headers={"Content-Type": "application/json", "payment-signature": token},
-                    )
-                if resp.status_code == 200:
+                    # Probe the endpoint to discover the required payment scheme
                     try:
-                        data = resp.json()
-                        # Extract text from common response shapes (Trinity, MCP, etc.)
-                        content = (
-                            data.get("response") or data.get("answer") or
-                            data.get("content") or data.get("result") or
-                            data.get("message") or data.get("output") or
-                            data.get("text") or ""
+                        probe = await client.post(ep, json=body, headers=headers_base, timeout=8.0)
+                        if probe.status_code == 402:
+                            real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(
+                                probe, plan_id, agent_id
+                            )
+                            logger.info(f"[exec_agent] {team}: probe → 402, scheme={real_scheme}")
+                        elif probe.status_code == 200:
+                            try:
+                                data = probe.json()
+                                content = _extract_agent_content(data)
+                                return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
+                            except Exception:
+                                return {"team": team, "status": "ok", "content": probe.text[:300], "endpoint": ep}
+                    except httpx.TimeoutException:
+                        pass
+
+                    # Get scheme-aware token
+                    if real_scheme == "nvm:card-delegation":
+                        token = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
                         )
-                        # Handle nested/list content
-                        if isinstance(content, list):
-                            content = "\n".join(str(c) for c in content[:5])
-                        elif isinstance(content, dict):
-                            content = content.get("text") or content.get("content") or str(content)[:300]
-                        # Try to extract readable content from MCP-style responses
-                        if not content and isinstance(data, dict):
-                            result = data.get("result", {})
-                            if isinstance(result, dict):
-                                items = result.get("content", [])
-                                if isinstance(items, list):
-                                    content = " ".join(i.get("text","") for i in items if isinstance(i, dict))
-                        if not content:
-                            content = str(data)[:400]
-                        return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
-                    except Exception:
-                        return {"team": team, "status": "ok", "content": resp.text[:300], "endpoint": ep}
-                else:
-                    return {"team": team, "status": f"http_{resp.status_code}"}
+                    else:
+                        token = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _get_buyer_token(real_plan_id, real_agent_id)
+                        )
+                    if not token:
+                        return {"team": team, "status": "no_token"}
+
+                    headers = dict(headers_base)
+                    headers["payment-signature"] = token
+
+                    resp = await client.post(ep, json=body, headers=headers)
+
+                    if resp.status_code == 200:
+                        try:
+                            data = resp.json()
+                            content = _extract_agent_content(data)
+                            return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
+                        except Exception:
+                            return {"team": team, "status": "ok", "content": resp.text[:300], "endpoint": ep}
+                    elif resp.status_code == 403 and real_scheme != "nvm:card-delegation":
+                        logger.info(f"[exec_agent] {team}: 403 with {real_scheme}, retrying with card-delegation")
+                        fallback_token = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
+                        )
+                        if fallback_token:
+                            headers["payment-signature"] = fallback_token
+                            retry = await client.post(ep, json=body, headers=headers)
+                            if retry.status_code == 200:
+                                try:
+                                    data = retry.json()
+                                    content = _extract_agent_content(data)
+                                    return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
+                                except Exception:
+                                    return {"team": team, "status": "ok", "content": retry.text[:300], "endpoint": ep}
+                        return {"team": team, "status": f"http_{resp.status_code}", "reason": "Token rejected — tried both crypto and card-delegation"}
+                    else:
+                        return {"team": team, "status": f"http_{resp.status_code}"}
             except Exception as exc:
                 return {"team": team, "status": "error", "reason": str(exc)[:80]}
 

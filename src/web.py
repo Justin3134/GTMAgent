@@ -100,6 +100,46 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 }
 .zc-ad-cta:hover { background: #142814; }
 
+/* ZeroClick Ad Gate Overlay */
+#zc-gate-overlay {
+  display: none;
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(6px);
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px;
+}
+#zc-gate-overlay.active { display: flex; }
+.zc-gate-card {
+  max-width: 420px; width: 100%;
+  border: 1px solid #1a4a1a; border-radius: 10px;
+  background: #060e06; padding: 28px 24px; text-align: center;
+}
+.zc-gate-badge {
+  font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--green); margin-bottom: 14px; display: inline-block;
+}
+.zc-gate-title {
+  font-size: 18px; font-weight: 500; line-height: 1.4; margin-bottom: 10px;
+}
+.zc-gate-msg {
+  font-size: 12px; color: var(--dim); line-height: 1.6; margin-bottom: 20px;
+}
+.zc-gate-cta {
+  display: inline-block; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--green); color: #000; font-weight: 600;
+  padding: 10px 28px; border-radius: 5px; text-decoration: none;
+  font-family: inherit; cursor: pointer; border: none;
+  transition: background 0.15s;
+}
+.zc-gate-cta:hover { background: #45e06a; }
+.zc-gate-hint {
+  font-size: 9px; color: var(--dim2); margin-top: 14px; letter-spacing: 0.04em;
+}
+.zc-gate-sponsor {
+  font-size: 9px; color: #2a5a2a; margin-top: 8px;
+}
+
 .chat-input-area {
   padding: 16px 24px; border-top: 1px solid var(--border);
   display: flex; gap: 10px; align-items: center;
@@ -577,6 +617,17 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
     <!-- Chat View -->
     <div id="view-chat" class="chat-panel" style="position:absolute;inset:0">
+    <!-- ZeroClick Ad Gate Overlay -->
+    <div id="zc-gate-overlay">
+      <div class="zc-gate-card">
+        <div class="zc-gate-badge">◉ ZeroClick Sponsored</div>
+        <div class="zc-gate-title" id="zc-gate-title"></div>
+        <div class="zc-gate-msg" id="zc-gate-msg"></div>
+        <a class="zc-gate-cta" id="zc-gate-cta" href="#" target="_blank" rel="noopener">Learn more →</a>
+        <div class="zc-gate-hint">Open the link above to continue chatting</div>
+        <div class="zc-gate-sponsor" id="zc-gate-sponsor"></div>
+      </div>
+    </div>
     <div class="chat-messages" id="messages">
       <div class="welcome">
         <strong>GTMAgent</strong> — Autonomous Business Intelligence<br><br>
@@ -659,6 +710,9 @@ const budgetSpentLbl = document.getElementById('budget-spent-lbl');
 let sending = false;
 let lastSentMessage = '';
 let totalCreditsSpent = 0;
+let chatMsgCount = 0;
+let lastStreamAd = null;
+const AD_GATE_EVERY = 3;
 
 function updateBudgetDisplay(spent) {
   if (spent != null) totalCreditsSpent = spent;
@@ -679,6 +733,44 @@ function retryLastMessage() {
     sendMessage();
   }
 }
+
+async function showAdGate(ad) {
+  if (!ad) {
+    try {
+      const resp = await fetch(B + '/api/zeroclick-ad');
+      if (resp.ok) ad = await resp.json();
+    } catch(e) {}
+  }
+  if (!ad) ad = {
+    sponsor: 'ZeroClick.ai', title: 'ZeroClick — Native AI Ads',
+    message: 'Contextual native ads for AI-native services.',
+    cta: 'Learn about ZeroClick', click_url: 'https://zeroclick.ai'
+  };
+
+  const overlay = document.getElementById('zc-gate-overlay');
+  document.getElementById('zc-gate-title').textContent = ad.title || ad.sponsor || 'ZeroClick';
+  document.getElementById('zc-gate-msg').textContent = (ad.message || '').substring(0, 200);
+  const ctaEl = document.getElementById('zc-gate-cta');
+  ctaEl.textContent = (ad.cta || 'Learn more') + ' →';
+  ctaEl.href = ad.click_url || 'https://zeroclick.ai';
+  ctaEl.dataset.offerId = ad.id || '';
+  document.getElementById('zc-gate-sponsor').textContent = 'Sponsored by ' + (ad.sponsor || 'ZeroClick.ai');
+
+  overlay.classList.add('active');
+  input.disabled = true;
+  btn.disabled = true;
+
+  ctaEl.addEventListener('click', function onGateClick() {
+    ctaEl.removeEventListener('click', onGateClick);
+    const offerId = ctaEl.dataset.offerId;
+    if (offerId) fetch(S + '/zeroclick/click?offer_id=' + encodeURIComponent(offerId), {method:'POST'}).catch(()=>{});
+    overlay.classList.remove('active');
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
+  }, {once: true});
+}
+
 let lastStrategyData = null;
 
 function showView(v) {
@@ -1119,6 +1211,7 @@ function renderBizDashboard(data) {
         const errSt = (out.status||'');
         let errMsg = '';
         if (errSt.includes('402'))      errMsg = 'Endpoint returned 402 — needs fresh access token. Use "Run →" to re-try.';
+        else if (errSt.includes('403')) errMsg = 'Payment token rejected (403) — scheme mismatch or facilitator error. Use "Run →" to retry.';
         else if (errSt.includes('500') || errSt.includes('502')) errMsg = 'Endpoint returned ' + errSt.replace('http_','') + ' — agent server may be temporarily down.';
         else if (errSt.includes('404')) errMsg = 'Endpoint 404 — this agent may have changed URLs.';
         else if (errSt === 'no_token')  errMsg = 'Could not obtain access token — check NVM_BUYER_API_KEY.';
@@ -1722,6 +1815,7 @@ async function sendMessage() {
   sending = true;
   btn.disabled = true;
   input.value = '';
+  lastStreamAd = null;
 
   addMsg('user', escHtml(text));
 
@@ -1820,9 +1914,9 @@ async function sendMessage() {
               scrollDown();
             }
             else if (eventType === 'zeroclick_ad') {
-              // Only update sidebar — ad card in chat is rendered once via tool_result
               const ad = d.ad;
               if (ad) {
+                lastStreamAd = ad;
                 document.getElementById('zc-live-ad').style.display = 'block';
                 (document.getElementById('zc-ad-title')||{}).textContent = ad.title || ad.sponsor || 'ZeroClick';
                 (document.getElementById('zc-ad-msg')||{}).textContent = (ad.message || '').substring(0, 120);
@@ -1945,9 +2039,16 @@ async function sendMessage() {
   }
 
   sending = false;
-  btn.disabled = false;
-  input.focus();
+  chatMsgCount++;
   refreshStats();
+
+  if (chatMsgCount > 0 && chatMsgCount % AD_GATE_EVERY === 0) {
+    showAdGate(lastStreamAd);
+    lastStreamAd = null;
+  } else {
+    btn.disabled = false;
+    input.focus();
+  }
 }
 
 input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });

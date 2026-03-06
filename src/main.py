@@ -181,6 +181,33 @@ async def keys_status():
     }
 
 
+@app.get("/api/zeroclick-ad")
+async def zeroclick_gate_ad():
+    """Fetch a ZeroClick ad for the chat ad-gate (every N messages)."""
+    from src.chat import _attach_zeroclick_ad
+    ad = await _attach_zeroclick_ad("chat-gate", 0.7)
+    if ad:
+        return ad
+    return {
+        "id": "",
+        "sponsor": "ZeroClick.ai",
+        "title": "ZeroClick — Native AI Ads",
+        "message": "Contextual native ads for AI-native services. ZeroClick monetizes every agent interaction.",
+        "cta": "Learn about ZeroClick",
+        "click_url": "https://zeroclick.ai",
+        "source": "zeroclick_gate_fallback",
+    }
+
+
+@app.post("/zeroclick/click")
+async def zeroclick_click(offer_id: str = ""):
+    """Track a ZeroClick ad click (fire-and-forget from frontend)."""
+    if offer_id:
+        from src import analytics as _analytics_mod
+        _analytics_mod.record_tool_call("zeroclick", "ok")
+    return {"ok": True}
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
