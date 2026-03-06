@@ -503,20 +503,19 @@ function renderOrchestration(data) {
     orchSetAgent('trinity', 'idle', 'not called');
   }
 
-  // Update buyer purchase list with team labels
+  // Update buyer transactions sidebar
   const txBuyer = document.getElementById('txs-buyer');
   if (txBuyer && purchases.length > 0) {
-    const bought = purchases.filter(p => p.purchased || p.called);
-    if (bought.length > 0) {
-      const items = bought.map(p => {
-        const rawVendor = (p.endpoint || p.team || '');
-        const isTrinity = rawVendor.includes('abilityai.dev');
-        const label = isTrinity ? 'AbilityAI Trinity' : rawVendor.replace(/https?:[/][/]/,'').substring(0,20);
-        const col = p.purchased ? 'var(--green)' : 'var(--orange)';
-        const badge = isTrinity ? '<span style="font-size:9px;color:var(--green);margin-left:4px">▲ Trinity</span>' : '';
+    const boughtTxs = purchases.filter(p => p.purchased);
+    if (boughtTxs.length > 0) {
+      const items = boughtTxs.map(p => {
+        const label = (p.team || p.vendor || '').substring(0, 22);
+        const isRepeat = p.repeat_purchase;
+        const tx = (p.tx_hash || '').substring(0, 10);
+        const badge = isRepeat ? '<span style="font-size:9px;color:var(--orange);margin-left:3px">REPEAT</span>' : '<span style="font-size:9px;color:var(--green);margin-left:3px">NEW</span>';
         return '<div class="tx-item"><div class="tx-top"><span class="tx-endpoint">' + escHtml(label) + badge + '</span>' +
-          '<span class="tx-credits" style="color:'+col+'">' + (p.purchased ? '-1 cr' : 'open') + '</span></div>' +
-          '<div class="tx-meta">' + (p.purchased ? 'nvm x402' : 'no payment') + ' · ' + new Date().toLocaleTimeString() + '</div></div>';
+          '<span class="tx-credits" style="color:var(--green)">order_plan ✓</span></div>' +
+          '<div class="tx-meta">nvm blockchain' + (tx ? ' · tx:' + escHtml(tx) + '…' : '') + ' · ' + new Date().toLocaleTimeString() + '</div></div>';
       });
       txBuyer.innerHTML = items.join('');
     }
@@ -593,37 +592,53 @@ function renderStrategyCard(data) {
     html += '</div>';
   }
 
-  // Purchases
+  // Purchases — order_plan() blockchain transactions
   const purchases = data.purchases || [];
   const bought = purchases.filter(p => p.purchased);
   const failed = purchases.filter(p => !p.purchased && !p.skipped && p.error);
+  const skipped = purchases.filter(p => p.skipped);
+
   if (bought.length) {
-    html += '<div style="margin:6px 0;font-size:11px"><span style="color:var(--green)">✓ Purchased ' + bought.length + ' service(s):</span><br>';
+    html += '<div style="margin:6px 0;font-size:11px;border:1px solid var(--green);border-radius:4px;padding:8px 10px">';
+    html += '<div style="color:var(--green);font-size:10px;letter-spacing:0.06em;margin-bottom:6px">NVM TRANSACTIONS — ' + bought.length + ' plan(s) purchased</div>';
     bought.forEach(p => {
-      html += '<div style="margin-top:4px;color:var(--dim)">· ' + escHtml(p.team||p.vendor||p.endpoint||'') + ' <span style="color:var(--green)">−1 credit</span></div>';
-      if (p.response) {
-        const resp = typeof p.response === 'string' ? p.response : JSON.stringify(p.response).substring(0,200);
-        html += '<div style="margin-top:2px;font-size:10px;color:var(--dim2);padding-left:10px">' + escHtml(resp.substring(0,180)) + '…</div>';
-      }
-    });
-    html += '</div>';
-  }
-  if (failed.length) {
-    html += '<div style="margin:6px 0;font-size:10px"><span style="color:var(--orange)">Attempted but failed:</span><br>';
-    failed.forEach(p => {
-      const shortErr = (p.error||'').substring(0,90);
-      html += '<div style="color:var(--dim);margin-top:3px">· ' + escHtml(p.team||p.vendor||'') + ' — <span style="color:var(--red)">' + escHtml(shortErr) + '</span></div>';
+      const isRepeat = p.repeat_purchase;
+      const badge = isRepeat ? '<span style="font-size:9px;color:var(--orange);margin-left:5px">REPEAT</span>' : '<span style="font-size:9px;color:var(--green);margin-left:5px">NEW</span>';
+      const tx = (p.tx_hash||'').substring(0,16);
+      html += '<div style="margin-top:4px;display:flex;justify-content:space-between;align-items:center">';
+      html += '<span>' + escHtml(p.team||p.vendor||'') + badge + '</span>';
+      html += '<span style="color:var(--green);font-size:10px">order_plan ✓</span>';
+      html += '</div>';
+      if (tx) html += '<div style="font-size:9px;color:var(--dim2);margin-top:1px;padding-left:8px">txHash: ' + escHtml(tx) + '… · score: ' + (p.audit_score||0).toFixed(2) + ' · roi: ' + escHtml(p.roi_decision||'BUY') + '</div>';
     });
     html += '</div>';
   }
 
-  // ROI
+  if (failed.length) {
+    html += '<div style="margin:6px 0;font-size:10px">';
+    html += '<span style="color:var(--orange)">Failed (' + failed.length + '):</span><br>';
+    failed.forEach(p => {
+      html += '<div style="color:var(--dim);margin-top:2px">· ' + escHtml(p.team||'') + ' — <span style="color:var(--red)">' + escHtml((p.error||'').substring(0,80)) + '</span></div>';
+    });
+    html += '</div>';
+  }
+
+  if (skipped.length) {
+    html += '<div style="margin:4px 0;font-size:10px;color:var(--dim2)">Skipped (low ROI score): ' + skipped.map(p => escHtml(p.team||'')).join(', ') + '</div>';
+  }
+
+  // ROI summary
   const roi = data.roi_analysis || {};
-  if (roi.decision) {
-    const cls = roi.decision.includes('BUY') ? 'var(--green)' : 'var(--orange)';
+  if (roi.decision || roi.roi_rationale) {
+    const cls = (roi.decision||'').includes('BUY') ? 'var(--green)' : 'var(--orange)';
     html += '<div style="margin-top:8px;font-size:11px;border-top:1px solid var(--border);padding-top:6px">';
-    html += 'ROI: <span style="color:'+cls+'">' + escHtml(roi.decision) + '</span>';
-    if (roi.top_pick) html += ' · top pick: ' + escHtml(roi.top_pick);
+    if (roi.decision) html += 'ROI decision: <span style="color:'+cls+'">' + escHtml(roi.decision) + '</span>';
+    if (roi.teams_purchased_from && roi.teams_purchased_from.length) {
+      html += '<div style="margin-top:3px;font-size:10px;color:var(--dim)">Teams: ' + roi.teams_purchased_from.map(t => escHtml(t)).join(', ') + '</div>';
+    }
+    if (roi.roi_rationale) {
+      html += '<div style="margin-top:3px;font-size:10px;color:var(--dim2)">' + escHtml(roi.roi_rationale.substring(0,200)) + '</div>';
+    }
     html += '</div>';
   }
 
