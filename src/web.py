@@ -238,7 +238,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
   </header>
 
   <!-- Flow View (hidden by default) -->
-  <div id="view-flow" style="display:none;grid-column:1;overflow:auto;padding:24px 32px;background:var(--bg)">
+  <div id="view-flow" style="display:none;grid-column:1;grid-row:2;overflow:auto;padding:24px 32px;background:var(--bg)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div style="font-size:10px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase">Workflow — last strategy run</div>
       <div id="flow-key-status" style="font-size:9px;color:var(--dim2);letter-spacing:0.05em"></div>
@@ -248,7 +248,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     </div>
   </div>
 
-  <div id="view-chat" class="chat-panel">
+  <div id="view-chat" class="chat-panel" style="grid-column:1;grid-row:2">
     <div class="chat-messages" id="messages">
       <div class="welcome">
         <strong>AgentAudit</strong> — Autonomous Business Intelligence<br><br>
@@ -320,7 +320,7 @@ function showView(v) {
   const btnFlow = document.getElementById('btn-flow');
   if (v === 'flow') {
     chat.style.display = 'none';
-    flow.style.display = '';
+    flow.style.display = 'block';
     btnFlow.style.background = 'var(--fg)';
     btnFlow.style.color = 'var(--bg)';
     btnFlow.style.borderColor = 'var(--fg)';
@@ -331,7 +331,7 @@ function showView(v) {
     _loadKeyStatus().then(() => renderFlowView(lastStrategyData));
   } else {
     flow.style.display = 'none';
-    chat.style.display = '';
+    chat.style.display = 'flex';
     btnChat.style.background = 'var(--fg)';
     btnChat.style.color = 'var(--bg)';
     btnChat.style.borderColor = 'var(--fg)';
@@ -360,6 +360,9 @@ async function _loadKeyStatus() {
 }
 _loadKeyStatus();
 
+// Shared HTML-escape used by flow view helpers
+const e = s => { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; };
+
 function _fNode(id, type, content, extraStyle) {
   return '<div class="flow-node ' + type + '" id="fn-' + id + '" style="' + (extraStyle||'') + '">' + content + '</div>';
 }
@@ -380,7 +383,6 @@ function renderFlowView(data) {
     canvas.innerHTML = '<div style="color:var(--dim2);padding:40px 0">Run a strategy in Chat to see the workflow here.</div>';
     return;
   }
-  const e = s => { const d = document.createElement('div'); d.textContent = String(s||''); return d.innerHTML; };
   const scored = data.audit_scores || [];
   const apify = data.apify_actors || [];
   const exa = data.exa_research || {};
