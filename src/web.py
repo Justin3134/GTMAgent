@@ -103,41 +103,43 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 /* ZeroClick Ad Gate Overlay */
 #zc-gate-overlay {
   display: none;
-  position: absolute; inset: 0; z-index: 50;
-  background: rgba(0,0,0,0.88);
-  backdrop-filter: blur(6px);
+  position: absolute; inset: 0; z-index: 90;
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(8px);
   flex-direction: column; align-items: center; justify-content: center;
   padding: 32px;
 }
 #zc-gate-overlay.active { display: flex; }
 .zc-gate-card {
-  max-width: 420px; width: 100%;
-  border: 1px solid #1a4a1a; border-radius: 10px;
-  background: #060e06; padding: 28px 24px; text-align: center;
+  max-width: 440px; width: 100%;
+  border: 1px solid #1a4a1a; border-radius: 12px;
+  background: #060e06; padding: 32px 28px; text-align: center;
+  box-shadow: 0 0 60px rgba(52,208,88,0.08);
 }
 .zc-gate-badge {
   font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
-  color: var(--green); margin-bottom: 14px; display: inline-block;
+  color: var(--green); margin-bottom: 16px; display: inline-block;
 }
 .zc-gate-title {
-  font-size: 18px; font-weight: 500; line-height: 1.4; margin-bottom: 10px;
+  font-size: 20px; font-weight: 500; line-height: 1.4; margin-bottom: 12px;
 }
 .zc-gate-msg {
-  font-size: 12px; color: var(--dim); line-height: 1.6; margin-bottom: 20px;
+  font-size: 12px; color: var(--dim); line-height: 1.6; margin-bottom: 24px;
 }
 .zc-gate-cta {
-  display: inline-block; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
-  background: var(--green); color: #000; font-weight: 600;
-  padding: 10px 28px; border-radius: 5px; text-decoration: none;
+  display: inline-block; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--green); color: #000; font-weight: 700;
+  padding: 12px 36px; border-radius: 6px; text-decoration: none;
   font-family: inherit; cursor: pointer; border: none;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
 }
-.zc-gate-cta:hover { background: #45e06a; }
+.zc-gate-cta:hover { background: #45e06a; transform: scale(1.03); }
 .zc-gate-hint {
-  font-size: 9px; color: var(--dim2); margin-top: 14px; letter-spacing: 0.04em;
+  font-size: 11px; color: var(--fg); margin-top: 18px; letter-spacing: 0.04em;
+  font-weight: 500;
 }
 .zc-gate-sponsor {
-  font-size: 9px; color: #2a5a2a; margin-top: 8px;
+  font-size: 9px; color: #2a5a2a; margin-top: 10px;
 }
 
 .chat-input-area {
@@ -584,7 +586,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div class="svc-status" id="tool-nvm-wrap" title="Nevermined x402 — payment infrastructure"><span class="dot" id="dot-nvm"></span><span style="font-size:10px">Nevermined</span><span id="tool-nvm-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div class="svc-status" id="tool-zc-wrap" title="ZeroClick native ads — live"><span class="dot" id="dot-zc"></span><span style="font-size:10px">ZeroClick</span><span id="tool-zc-status" style="font-size:9px;color:var(--green);margin-left:3px">live</span></div>
       <div class="svc-status" id="tool-apify-wrap" title="Apify Store — web scrapers and AI actors marketplace"><span class="dot up" id="dot-apify"></span><span style="font-size:10px">Apify</span><span id="tool-apify-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
-      <div class="svc-status" id="tool-mindra-wrap" title="Mindra — agentic workflow orchestrator with self-healing"><span class="dot up" id="dot-mindra"></span><span style="font-size:10px">Mindra</span><span id="tool-mindra-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
+      <div class="svc-status" id="tool-mindra-wrap" title="Mindra — 5 parallel GTM agents (Web Search, LinkedIn, Google, GitHub, Content)"><span class="dot up" id="dot-mindra"></span><span style="font-size:10px">Mindra&times;5</span><span id="tool-mindra-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
       <div style="display:flex;gap:4px">
         <button id="btn-chat" onclick="showView('chat')" style="font-size:10px;font-family:inherit;background:var(--fg);border:1px solid var(--fg);color:var(--bg);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Chat</button>
@@ -615,19 +617,20 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       </div>
     </div>
 
-    <!-- Chat View -->
-    <div id="view-chat" class="chat-panel" style="position:absolute;inset:0">
-    <!-- ZeroClick Ad Gate Overlay -->
+    <!-- ZeroClick Ad Gate Overlay (covers all views) -->
     <div id="zc-gate-overlay">
       <div class="zc-gate-card">
         <div class="zc-gate-badge">◉ ZeroClick Sponsored</div>
         <div class="zc-gate-title" id="zc-gate-title"></div>
         <div class="zc-gate-msg" id="zc-gate-msg"></div>
         <a class="zc-gate-cta" id="zc-gate-cta" href="#" target="_blank" rel="noopener">Learn more →</a>
-        <div class="zc-gate-hint">Open the link above to continue chatting</div>
+        <div class="zc-gate-hint" id="zc-gate-hint">Click the link above to continue</div>
         <div class="zc-gate-sponsor" id="zc-gate-sponsor"></div>
       </div>
     </div>
+
+    <!-- Chat View -->
+    <div id="view-chat" class="chat-panel" style="position:absolute;inset:0">
     <div class="chat-messages" id="messages">
       <div class="welcome">
         <strong>GTMAgent</strong> — Autonomous Business Intelligence<br><br>
@@ -640,13 +643,6 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
         &bull; what services are available in the marketplace<br>
       </div>
     </div>
-    <div id="budget-bar" style="padding:6px 24px 0;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);background:var(--bg)">
-      <span style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap">Budget</span>
-      <input id="budget-input" type="number" min="1" max="50" value="5"
-        style="width:48px;background:#0a0a0a;border:1px solid var(--border);color:var(--fg);font-family:inherit;font-size:11px;padding:3px 6px;border-radius:3px;outline:none;text-align:center" />
-      <span style="font-size:9px;color:var(--dim2)">credits max spend</span>
-      <span id="budget-spent-lbl" style="font-size:9px;color:var(--dim2);margin-left:auto"></span>
-    </div>
     <div class="chat-input-area">
       <input id="chat-input" placeholder="Describe a business goal..." autocomplete="off" />
       <button id="send-btn">Send</button>
@@ -656,15 +652,23 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
   <div class="stats-panel">
 
-    <div class="section-label">Live Orchestration <span style="font-size:9px;color:var(--dim)">· agents running now</span></div>
+    <div class="section-label">Mindra GTM Agents <span style="font-size:9px;color:#6ecbf5">· 5 parallel</span></div>
+    <div class="orch-grid" id="orch-grid-mindra" style="grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:4px;display:grid">
+      <div class="agent-box idle" id="orch-mindra-web"     ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x1F50D; Web Search</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-mindra-linkedin" ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x25C8; LinkedIn</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-mindra-google"   ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x25A3; Google</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-mindra-github"   ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x2B22; GitHub</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-mindra-content"  ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x270E; Content</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+    </div>
+    <div style="height:4px"></div>
+    <div class="section-label">Live Orchestration <span style="font-size:9px;color:var(--dim)">· marketplace agents</span></div>
     <div class="orch-grid" id="orch-grid">
-      <div class="agent-box idle" id="orch-mindra"     ><div class="agent-box-name" style="color:var(--cyan,#6ecbf5)">⬡ Mindra</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-exa"        ><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-apify"      ><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-openai"     ><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
       <div class="agent-box idle" id="orch-nevermined" ><div class="agent-box-name">Nevermined</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-trinity"    ><div class="agent-box-name" style="color:var(--green)">▲ TrinityOS: Nexus</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-social"     ><div class="agent-box-name" style="color:var(--green)">▲ TrinityOS: Social</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-trinity"    ><div class="agent-box-name" style="color:var(--green)">&#x25B2; TrinityOS: Nexus</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+      <div class="agent-box idle" id="orch-social"     ><div class="agent-box-name" style="color:var(--green)">&#x25B2; TrinityOS: Social</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
     </div>
     <div class="divider"></div>
 
@@ -682,19 +686,15 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     <div class="divider"></div>
 
     <div class="section-label">ZeroClick <span style="font-size:9px;letter-spacing:0" id="tool-zc-status" style="color:var(--green)">live</span></div>
-    <div id="zc-live-ad" style="display:none;border:1px solid #1a3a1a;border-radius:4px;padding:10px 12px;margin-bottom:8px;background:#050f05">
-      <div style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:5px">◉ Sponsored — ZeroClick Native</div>
-      <div id="zc-ad-title" style="font-size:12px;font-weight:bold;margin-bottom:4px;line-height:1.4"></div>
-      <div id="zc-ad-msg" style="font-size:10px;color:var(--dim);line-height:1.5;margin-bottom:8px"></div>
-      <a id="zc-ad-cta" href="#" target="_blank" rel="noopener" style="font-size:10px;color:var(--green);text-decoration:none;letter-spacing:0.05em;border:1px solid #1a3a1a;padding:3px 8px;border-radius:2px" onclick="trackZcClick(this)"></a>
-    </div>
+    <div style="font-size:9px;color:var(--dim2);margin-bottom:6px">Ad gate active — every action requires ZeroClick</div>
     <div class="stat-row"><span class="stat-key">impressions</span><span class="stat-val" id="zc-imp">0</span></div>
     <div class="stat-row"><span class="stat-key">conversions</span><span class="stat-val" id="zc-conv">0</span></div>
     <div class="divider"></div>
 
     <div class="section-label">Mindra <span style="font-size:9px;letter-spacing:0;color:#6ecbf5" id="mindra-status">ready</span></div>
-    <div style="font-size:9px;color:var(--dim2);margin-bottom:4px">Seamless orchestration backbone</div>
+    <div style="font-size:9px;color:var(--dim2);margin-bottom:4px">5 parallel GTM agents</div>
     <div class="stat-row"><span class="stat-key">orchestrations</span><span class="stat-val" id="mindra-calls">0</span></div>
+    <div class="stat-row"><span class="stat-key">agents succeeded</span><span class="stat-val" id="mindra-succeeded" style="color:#6ecbf5">0/5</span></div>
     <div class="stat-row"><span class="stat-key">self-healing</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
     <div class="stat-row"><span class="stat-key">anomaly detection</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
   </div>
@@ -705,27 +705,12 @@ const S='', B='';
 const msgs = document.getElementById('messages');
 const input = document.getElementById('chat-input');
 const btn = document.getElementById('send-btn');
-const budgetInput = document.getElementById('budget-input');
-const budgetSpentLbl = document.getElementById('budget-spent-lbl');
 let sending = false;
 let lastSentMessage = '';
 let totalCreditsSpent = 0;
-let chatMsgCount = 0;
 let lastStreamAd = null;
-const AD_GATE_EVERY = 3;
+let adGateActive = false;
 
-function updateBudgetDisplay(spent) {
-  if (spent != null) totalCreditsSpent = spent;
-  const budget = parseInt(budgetInput ? budgetInput.value : 5) || 5;
-  if (budgetSpentLbl) {
-    if (totalCreditsSpent > 0) {
-      const pct = Math.min(100, Math.round(totalCreditsSpent / budget * 100));
-      budgetSpentLbl.innerHTML = '<span style="color:' + (pct >= 80 ? 'var(--orange)' : 'var(--dim)') + '">' + totalCreditsSpent + '/' + budget + ' used (' + pct + '%)</span>';
-    } else {
-      budgetSpentLbl.textContent = '';
-    }
-  }
-}
 
 function retryLastMessage() {
   if (lastSentMessage && !sending) {
@@ -734,7 +719,9 @@ function retryLastMessage() {
   }
 }
 
-async function showAdGate(ad) {
+let _gateResolve = null;
+async function showAdGate(ad, hint, onDone) {
+  adGateActive = true;
   if (!ad) {
     try {
       const resp = await fetch(B + '/api/zeroclick-ad');
@@ -755,6 +742,7 @@ async function showAdGate(ad) {
   ctaEl.href = ad.click_url || 'https://zeroclick.ai';
   ctaEl.dataset.offerId = ad.id || '';
   document.getElementById('zc-gate-sponsor').textContent = 'Sponsored by ' + (ad.sponsor || 'ZeroClick.ai');
+  document.getElementById('zc-gate-hint').textContent = hint || 'Click the link above to continue';
 
   overlay.classList.add('active');
   input.disabled = true;
@@ -765,31 +753,33 @@ async function showAdGate(ad) {
     const offerId = ctaEl.dataset.offerId;
     if (offerId) fetch(S + '/zeroclick/click?offer_id=' + encodeURIComponent(offerId), {method:'POST'}).catch(()=>{});
     overlay.classList.remove('active');
+    adGateActive = false;
     input.disabled = false;
     btn.disabled = false;
     input.focus();
+    if (onDone) onDone();
   }, {once: true});
 }
 
+document.getElementById('zc-gate-overlay').addEventListener('click', e => e.stopPropagation());
+document.addEventListener('keydown', e => { if (adGateActive && e.key === 'Escape') e.preventDefault(); });
+
 let lastStrategyData = null;
 
-function showView(v) {
+function _doShowView(v) {
   const chat  = document.getElementById('view-chat');
   const flow  = document.getElementById('view-flow');
   const biz   = document.getElementById('view-biz');
   const btnChat = document.getElementById('btn-chat');
   const btnFlow = document.getElementById('btn-flow');
   const btnBiz  = document.getElementById('btn-biz');
-  const activeStyle = {background:'var(--fg)', color:'var(--bg)', borderColor:'var(--fg)'};
-  const inactiveStyle = {background:'transparent', color:'var(--dim)', borderColor:'var(--dim2)'};
 
-  function applyStyle(btn, active) {
-    btn.style.background   = active ? 'var(--fg)' : 'transparent';
-    btn.style.color        = active ? 'var(--bg)' : 'var(--dim)';
-    btn.style.borderColor  = active ? 'var(--fg)' : 'var(--dim2)';
+  function applyStyle(b, active) {
+    b.style.background   = active ? 'var(--fg)' : 'transparent';
+    b.style.color        = active ? 'var(--bg)' : 'var(--dim)';
+    b.style.borderColor  = active ? 'var(--fg)' : 'var(--dim2)';
   }
 
-  // Hide all
   chat.style.display = 'none';
   flow.style.display = 'none';
   biz.style.display  = 'none';
@@ -819,6 +809,15 @@ function showView(v) {
   } else {
     chat.style.display = 'flex';
     applyStyle(btnChat, true);
+  }
+}
+
+function showView(v) {
+  if (v === 'flow' || v === 'biz') {
+    const label = v === 'flow' ? 'Flow view' : 'Business dashboard';
+    showAdGate(null, 'Click to access ' + label, function() { _doShowView(v); });
+  } else {
+    _doShowView(v);
   }
 }
 
@@ -1579,8 +1578,6 @@ function renderAuditCard(data) {
   }
   if (data.reasoning) html += '<div style="margin-top:8px;color:var(--dim);font-size:11px;line-height:1.5">' + escHtml(data.reasoning) + '</div>';
   html += '</div>';
-  // Append ZeroClick ad if the audit result includes one
-  if (data.ad) html += renderAdCard(data.ad, score);
   return html;
 }
 
@@ -1659,7 +1656,7 @@ function renderOrchestration(data) {
   }
 }
 
-const ORCH_IDS = {mindra:'orch-mindra', exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', social:'orch-social'};
+const ORCH_IDS = {'mindra-web':'orch-mindra-web', 'mindra-linkedin':'orch-mindra-linkedin', 'mindra-google':'orch-mindra-google', 'mindra-github':'orch-mindra-github', 'mindra-content':'orch-mindra-content', exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', social:'orch-social'};
 
 function orchSetAgent(id, status, msg) {
   const boxId = ORCH_IDS[id] || ('orch-agent-' + id);
@@ -1676,7 +1673,7 @@ function orchSetAgent(id, status, msg) {
 }
 
 function orchSetRunning() {
-  ['mindra','exa','apify','openai','nevermined','trinity','social'].forEach(id => {
+  ['mindra-web','mindra-linkedin','mindra-google','mindra-github','mindra-content','exa','apify','openai','nevermined','trinity','social'].forEach(id => {
     orchSetAgent(id, 'running', 'queued');
   });
 }
@@ -1696,7 +1693,7 @@ function renderStrategyCard(data) {
   html += '<span style="font-size:10px;color:var(--dim)">' + (data.credits_spent||0) + ' cr spent</span></div>';
 
   // Steps pipeline
-  const stepLabels = {exa_research:'Exa research',marketplace_search:'Marketplace search',audit_candidates:'Candidate audit',purchase_services:'Nevermined purchase'};
+  const stepLabels = {mindra_parallel_agents:'Mindra GTM x5',exa_research:'Exa research',marketplace_search:'Marketplace search',audit_candidates:'Candidate audit',purchase_services:'Nevermined purchase'};
   const steps = data.steps || [];
   if (steps.length) {
     html += '<div style="display:flex;gap:4px;margin:8px 0;flex-wrap:wrap">';
@@ -1704,6 +1701,30 @@ function renderStrategyCard(data) {
       html += '<span style="font-size:9px;background:var(--border);padding:2px 6px;border-radius:2px;color:var(--dim)">' + (stepLabels[s]||s) + (i<steps.length-1?' →':'') + '</span>';
     });
     html += '</div>';
+  }
+
+  // Mindra GTM agent results
+  const mindraAgents = data.mindra_agents || {};
+  const mindraKeys = Object.keys(mindraAgents);
+  if (mindraKeys.length) {
+    const mSucc = mindraKeys.filter(k => mindraAgents[k].status === 'completed').length;
+    html += '<div style="margin:6px 0;font-size:10px;border:1px solid #1a2a3a;border-radius:4px;padding:8px 10px;background:#020a14">';
+    html += '<div style="color:#6ecbf5;font-size:9px;letter-spacing:0.08em;margin-bottom:6px">MINDRA GTM AGENTS — ' + mSucc + '/' + mindraKeys.length + ' succeeded</div>';
+    mindraKeys.forEach(k => {
+      const a = mindraAgents[k];
+      const ok = a.status === 'completed' && a.answer;
+      const clr = ok ? '#6ecbf5' : 'var(--red)';
+      html += '<div style="margin-top:4px;border-left:2px solid '+clr+';padding-left:8px">';
+      html += '<div style="display:flex;justify-content:space-between"><span style="color:var(--dim)">' + escHtml(a.name||k) + '</span><span style="color:'+clr+';font-size:9px">' + (ok?'done':''+a.status) + '</span></div>';
+      if (ok) html += '<div style="font-size:9px;color:var(--dim2);margin-top:2px;line-height:1.4">' + escHtml((a.answer||'').substring(0,150)) + '…</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  // Mindra GTM synthesis
+  if (data.mindra_gtm_synthesis) {
+    html += '<div style="margin:6px 0;font-size:10px;color:var(--dim);border-left:2px solid #6ecbf5;padding-left:8px"><span style="color:#6ecbf5">Mindra GTM Strategy:</span><br>';
+    html += escHtml(data.mindra_gtm_synthesis.substring(0,300)) + '…</div>';
   }
 
   // Exa research highlights
@@ -1836,7 +1857,7 @@ async function sendMessage() {
     const resp = await fetch(B + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, budget_credits: parseInt(budgetInput ? budgetInput.value : 5) || 5 }),
+      body: JSON.stringify({ message: text }),
       signal: ctrl.signal,
     });
 
@@ -1897,8 +1918,14 @@ async function sendMessage() {
             else if (eventType === 'tool_step') {
               if (d.agent_init) {
                 d.agent_init.forEach(a => orchSetAgent(a.id, 'idle', 'queued'));
+                window._mindraSucceeded = 0;
               } else if (d.agent) {
                 orchSetAgent(d.agent, d.status || 'running', d.msg || d.status);
+                if (d.agent && d.agent.startsWith('mindra-') && d.status === 'done') {
+                  window._mindraSucceeded = (window._mindraSucceeded || 0) + 1;
+                  const mse = document.getElementById('mindra-succeeded');
+                  if (mse) mse.textContent = window._mindraSucceeded + '/5';
+                }
               } else if (d.message) {
                 const el = lastToolId ? document.getElementById(lastToolId) : null;
                 if (el) {
@@ -1915,17 +1942,10 @@ async function sendMessage() {
             }
             else if (eventType === 'zeroclick_ad') {
               const ad = d.ad;
-              if (ad) {
+              if (ad && !adGateActive) {
                 lastStreamAd = ad;
-                document.getElementById('zc-live-ad').style.display = 'block';
-                (document.getElementById('zc-ad-title')||{}).textContent = ad.title || ad.sponsor || 'ZeroClick';
-                (document.getElementById('zc-ad-msg')||{}).textContent = (ad.message || '').substring(0, 120);
-                const cta = document.getElementById('zc-ad-cta');
-                cta.textContent = (ad.cta || 'Learn more') + ' →';
-                cta.href = ad.click_url || 'https://zeroclick.ai';
-                cta.dataset.offerId = ad.id || '';
+                showAdGate(ad, 'Click to continue chatting');
               }
-              refreshStats();
             }
             else if (eventType === 'tool_result') {
               const r = d.result;
@@ -1973,7 +1993,6 @@ async function sendMessage() {
               // Business strategy result card + live orchestration update
               if (r && typeof r === 'object' && r.goal && r.steps) {
                 lastStrategyData = r;
-                updateBudgetDisplay(r.credits_spent || 0);
                 auditCards += renderStrategyCard(r);
                 renderOrchestration(r);
                 // Show "Business" tab button as active indicator after strategy completes
@@ -1983,17 +2002,9 @@ async function sendMessage() {
                   btnBiz.style.color = 'var(--green)';
                   btnBiz.title = 'Business dashboard ready — click to see agents running';
                 }
-                // ZeroClick ad — render once in chat, update sidebar
-                if (r.zeroclick_ad) {
-                  const ad = r.zeroclick_ad;
-                  auditCards += renderAdCard(ad, r.roi_analysis && r.roi_analysis.top_score || 0);
-                  document.getElementById('zc-live-ad').style.display = 'block';
-                  (document.getElementById('zc-ad-title')||{}).textContent = ad.title || ad.sponsor || 'ZeroClick';
-                  (document.getElementById('zc-ad-msg')||{}).textContent = (ad.message || '').substring(0, 120);
-                  const cta = document.getElementById('zc-ad-cta');
-                  cta.textContent = (ad.cta || 'Learn more') + ' →';
-                  cta.href = ad.click_url || 'https://zeroclick.ai';
-                  cta.dataset.offerId = ad.id || '';
+                // ZeroClick ad handled by the gate overlay
+                if (r.zeroclick_ad && !adGateActive) {
+                  showAdGate(r.zeroclick_ad, 'Click to continue chatting');
                 }
               }
               // Parallel agents result
@@ -2039,20 +2050,15 @@ async function sendMessage() {
   }
 
   sending = false;
-  chatMsgCount++;
   refreshStats();
-
-  if (chatMsgCount > 0 && chatMsgCount % AD_GATE_EVERY === 0) {
-    showAdGate(lastStreamAd);
-    lastStreamAd = null;
-  } else {
-    btn.disabled = false;
-    input.focus();
+  if (!adGateActive) {
+    showAdGate(lastStreamAd, 'Click to continue chatting');
   }
+  lastStreamAd = null;
 }
 
-input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-btn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!adGateActive) sendMessage(); } });
+btn.addEventListener('click', () => { if (!adGateActive) sendMessage(); });
 
 function trackZcClick(el) {
   const offerId = el.dataset.offerId;
@@ -2132,6 +2138,11 @@ async function refreshStats() {
     } else {
       mindraStatusEl.textContent = 'ready';
     }
+  }
+  // Mindra per-agent succeeded count (updated from tool_step events in SSE handler)
+  const mindraSuccEl = document.getElementById('mindra-succeeded');
+  if (mindraSuccEl && window._mindraSucceeded !== undefined) {
+    mindraSuccEl.textContent = window._mindraSucceeded + '/5';
   }
 
   // ZeroClick — data lives in /stats (seller analytics module)

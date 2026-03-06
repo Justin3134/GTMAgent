@@ -668,8 +668,6 @@ async def api_chat(request: Request):
     body = await request.json()
     message = body.get("message", "")
     session_id = body.get("session_id", "default")
-    budget_credits = int(body.get("budget_credits", 5) or 5)
-
     if not message:
         return {"error": "message is required"}
 
@@ -678,7 +676,7 @@ async def api_chat(request: Request):
     async def event_generator():
         full_response = ""
         try:
-            async for event in chat_stream(message, history, budget_credits=budget_credits):
+            async for event in chat_stream(message, history):
                 yield {"event": event["event"], "data": json.dumps(event["data"])}
                 if event["event"] == "token":
                     full_response += event["data"].get("text", "")

@@ -138,6 +138,99 @@ async def reject(execution_id: str, approval_id: str, reason: str = "") -> bool:
         return ok
 
 
+MINDRA_GTM_AGENTS = {
+    "web_search": {
+        "name": "Web Search",
+        "task_template": (
+            "Research the market for: {goal}\n"
+            "Find: competitors, market size, trends, pricing models, key players, recent funding rounds.\n"
+            "Use web search to gather current data. Be specific and data-driven. "
+            "Return structured findings with sources."
+        ),
+    },
+    "linkedin": {
+        "name": "LinkedIn",
+        "task_template": (
+            "Find LinkedIn intelligence for building: {goal}\n"
+            "Search for: relevant connections in my network, industry leaders posting about this topic, "
+            "potential partners or collaborators, companies hiring for similar roles, "
+            "recent posts and articles about this market.\n"
+            "Focus on actionable GTM contacts and partnership opportunities."
+        ),
+    },
+    "google": {
+        "name": "Google Workspace",
+        "task_template": (
+            "Search Google Workspace for context related to: {goal}\n"
+            "Check emails, calendar events, documents, and sheets for any prior work, "
+            "contacts, meetings, proposals, or research related to this business area.\n"
+            "Summarize relevant findings that could accelerate go-to-market."
+        ),
+    },
+    "github": {
+        "name": "GitHub",
+        "task_template": (
+            "Find GitHub resources for building: {goal}\n"
+            "Search for: relevant open-source tools, popular repositories, technical frameworks, "
+            "API integrations, developer communities, and code examples.\n"
+            "Focus on tools that could accelerate building this business. "
+            "Include star counts and recent activity where available."
+        ),
+    },
+    "content": {
+        "name": "Content Creator",
+        "task_template": (
+            "Create go-to-market content for: {goal}\n"
+            "Draft: (1) elevator pitch (2-3 sentences), "
+            "(2) landing page headline + subheadline, "
+            "(3) 3 LinkedIn post ideas with hooks, "
+            "(4) key messaging pillars and value propositions.\n"
+            "Make it compelling, specific, and ready to publish."
+        ),
+    },
+}
+
+
+async def run_parallel_tasks(
+    goal: str,
+    metadata: dict | None = None,
+    timeout_seconds: float = 90.0,
+) -> dict[str, dict]:
+    """Run 5 focused Mindra agent tasks in parallel for comprehensive GTM intelligence.
+
+    Each task targets a different connected agent (Web Search, LinkedIn, Google, GitHub,
+    Content Creator) with a focused prompt derived from the user's business goal.
+    Returns a dict keyed by agent_id with their individual results.
+    """
+    if not is_available():
+        return {aid: {"status": "unavailable", "error": "Mindra API key not configured", "final_answer": ""}
+                for aid in MINDRA_GTM_AGENTS}
+
+    base_meta = metadata or {}
+    coros = {}
+    for agent_id, config in MINDRA_GTM_AGENTS.items():
+        task_text = config["task_template"].format(goal=goal)
+        coros[agent_id] = run_and_collect(
+            task=task_text,
+            metadata={**base_meta, "agent_focus": agent_id, "agent_name": config["name"], "goal": goal},
+            auto_approve=True,
+            timeout_seconds=timeout_seconds,
+        )
+
+    results = {}
+    gathered = await asyncio.gather(*coros.values(), return_exceptions=True)
+    for agent_id, result in zip(coros.keys(), gathered):
+        if isinstance(result, Exception):
+            logger.warning(f"[Mindra] Parallel task {agent_id} failed: {result}")
+            results[agent_id] = {"status": "error", "error": str(result), "final_answer": ""}
+        else:
+            results[agent_id] = result
+
+    succeeded = sum(1 for r in results.values() if r.get("status") == "completed")
+    logger.info(f"[Mindra] Parallel tasks complete: {succeeded}/{len(results)} succeeded")
+    return results
+
+
 async def run_and_collect(
     task: str,
     metadata: dict | None = None,

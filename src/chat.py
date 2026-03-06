@@ -222,11 +222,19 @@ Key: `purchased: true` = a REAL Nevermined blockchain transaction (order_plan).
 - When Exa API key is present, used to research the business domain before buying
 - Provides web-sourced competitive context to inform BUY/AVOID decisions
 
-## Mindra orchestration (when available)
-- Mindra is an agentic workflow orchestrator with self-healing, anomaly detection, and human-in-the-loop approvals
-- When the user asks to "orchestrate", "run a workflow", or "use Mindra", use **mindra_orchestrate**
-- The parallel_agents tool also routes through Mindra when available, adding self-healing and anomaly detection
-- Mindra workflows stream real-time events (tool executions, approvals, results) visible in the dashboard
+## Mindra GTM Agents (5 parallel agents — always active when Mindra is configured)
+- When execute_business_strategy runs, Mindra fires **5 agents in parallel**:
+  1. **Web Search** — market research, competitors, trends, pricing, funding
+  2. **LinkedIn** — connections, industry posts, potential partners, hiring signals
+  3. **Google Workspace** — emails, docs, prior work, meeting context
+  4. **GitHub** — relevant repos, open-source tools, frameworks, developer communities
+  5. **Content Creator** — elevator pitch, landing page copy, LinkedIn post ideas, messaging
+- All 5 run simultaneously alongside the existing pipeline (Exa, marketplace, audit, purchase)
+- Results appear in `mindra_agents` in the report with per-agent answers
+- `mindra_gtm_synthesis` contains the combined GTM strategy from all 5 agents
+- The Flow view shows all 5 agents with live running/done/failed status
+- When presenting results, cite which Mindra agent provided which insight
+- When the user asks to "orchestrate", "run a workflow", or "use Mindra" directly, use **mindra_orchestrate**
 
 ## AbilityAI Trinity integration
 - "Full Stack Agents" = Trinity Nexus agent (us14.abilityai.dev) — multi-agent orchestration
@@ -249,8 +257,15 @@ After execute_business_strategy completes, DO NOT STOP. You must continue workin
 - State the ROI reason in 1 sentence
 - Mention Exa competitive insight in 1 sentence
 
-### Phase 2 — Live Agent Intelligence (IMMEDIATELY after briefing)
-Present REAL outputs from the agents that were called:
+### Phase 2 — Mindra GTM Intelligence (IMMEDIATELY after briefing)
+Present REAL outputs from the 5 Mindra agents. Check `mindra_agents` in the report:
+- For each agent that succeeded, show a 2-3 line summary: "Web Search: [key finding]", "LinkedIn: [connections/posts found]", etc.
+- If `mindra_gtm_synthesis` exists, present it as the combined GTM strategy
+- If an agent failed, briefly note it: "Google Workspace: unavailable"
+- NEVER fabricate Mindra output — only show what agents actually returned
+
+### Phase 3 — Live Agent Intelligence (after Mindra results)
+Present REAL outputs from marketplace agents that were called:
 
 **TrinityOS agents** — check `trinity_agents` in the report:
 - If agents responded (`status: ok`), show their ACTUAL content: "TrinityOS Nexus: [real output]"
@@ -416,13 +431,14 @@ TOOLS = [
                 "MAIN TOOL. Call this IMMEDIATELY whenever the user mentions a business goal, idea, "
                 "or problem (e.g. 'I want to build X', 'help me with Y', 'find the best service for Z', "
                 "'I need to research X market'). "
-                "This tool runs the FULL autonomous pipeline: "
-                "(1) Exa web research on the business domain, "
-                "(2) Nevermined Discovery API search for relevant marketplace sellers, "
-                "(3) liveness probe all candidates, "
-                "(4) OpenAI quality audit of top live candidates, "
-                "(5) Nevermined x402 purchase from all viable services within budget, "
-                "(6) synthesized business strategy with ROI analysis. "
+                "This tool runs the FULL autonomous pipeline with 5 PARALLEL MINDRA GTM AGENTS: "
+                "(1) Mindra fires 5 agents simultaneously — Web Search (market research), LinkedIn (connections & posts), "
+                "Google Workspace (prior work & emails), GitHub (repos & tools), Content Creator (GTM copy & pitches), "
+                "(2) Exa competitive intelligence on the domain, "
+                "(3) Nevermined Discovery API search for marketplace sellers, "
+                "(4) OpenAI quality audit of top candidates, "
+                "(5) Nevermined x402 purchase from viable services, "
+                "(6) synthesized GTM strategy combining all Mindra agent insights + marketplace results. "
                 "Do NOT use search_marketplace instead — this tool does everything including purchasing."
             ),
             "parameters": {
@@ -467,8 +483,8 @@ TOOLS = [
         "function": {
             "name": "parallel_agents",
             "description": (
-                "Mindra-style multi-agent orchestration: call multiple marketplace services IN PARALLEL "
-                "with the same query, then synthesize all responses into one output. "
+                "Mindra multi-agent orchestration: run 5 Mindra GTM agents (Web Search, LinkedIn, Google, GitHub, Content) "
+                "IN PARALLEL alongside marketplace services, then synthesize all responses into one output. "
                 "Use this when the user explicitly wants to run multiple agents simultaneously, "
                 "compare live responses, or when you need deep research by combining 5+ specialized agents. "
                 "Demonstrates hierarchical orchestration using Nevermined payments per agent."
@@ -1134,41 +1150,46 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
         "credits_spent": 0,
     }
 
-    # --- Mindra path: delegate orchestration for self-healing + anomaly detection ---
+    # --- Mindra path: run 5 parallel GTM agents + marketplace agents ---
     if _mindra.is_available():
-        logger.info("[parallel_agents] Routing through Mindra orchestrator")
+        logger.info("[parallel_agents] Routing through 5 Mindra GTM agents")
         _analytics_mod.record_tool_call("mindra", "ok")
-        mindra_task = (
-            f"Run {agent_count} AI marketplace agents in parallel with this query: {query}\n"
-            "Collect all responses and synthesize them into one cohesive answer."
-        )
-        mindra_result = await _mindra.run_and_collect(
-            task=mindra_task,
-            metadata={
-                "source": "gtmagent_parallel",
-                "agent_count": agent_count,
-                "query": query,
-            },
-            auto_approve=True,
+        mindra_results = await _mindra.run_parallel_tasks(
+            goal=query,
+            metadata={"source": "gtmagent_parallel", "agent_count": agent_count, "query": query},
             timeout_seconds=90.0,
         )
+
+        mindra_agents_report = {}
+        all_insights = []
+        for agent_id, result in mindra_results.items():
+            agent_name = _mindra.MINDRA_GTM_AGENTS.get(agent_id, {}).get("name", agent_id)
+            status = result.get("status", "unknown")
+            answer = result.get("final_answer", "")
+            mindra_agents_report[agent_id] = {
+                "name": agent_name, "status": status,
+                "answer": answer[:600] if answer else "",
+                "tool_count": len(result.get("tool_results", [])),
+            }
+            if status == "completed" and answer:
+                all_insights.append(f"[{agent_name}]: {answer[:400]}")
+
         report["orchestrator"] = "mindra"
-        report["mindra_execution_id"] = mindra_result.get("execution_id", "")
-        report["mindra_status"] = mindra_result.get("status", "unknown")
-        report["mindra_tool_results"] = mindra_result.get("tool_results", [])
-        report["self_healing"] = mindra_result.get("status") == "completed"
+        report["mindra_agents"] = mindra_agents_report
+        report["mindra_succeeded"] = sum(1 for r in mindra_results.values() if r.get("status") == "completed")
+        report["mindra_total"] = len(mindra_results)
+        report["self_healing"] = report["mindra_succeeded"] > 0
         report["anomaly_detection"] = True
 
-        if mindra_result.get("final_answer"):
-            report["synthesis"] = mindra_result["final_answer"]
+        if all_insights:
+            report["synthesis"] = "\n\n".join(all_insights)
             report["summary"] = (
-                f"Mindra orchestrated {agent_count} agents in parallel. "
-                f"Status: {mindra_result.get('status', 'unknown')}. "
-                f"{len(mindra_result.get('tool_results', []))} tool executions."
+                f"Mindra ran {len(mindra_results)} GTM agents in parallel. "
+                f"{report['mindra_succeeded']}/{len(mindra_results)} succeeded."
             )
             return json.dumps(report, indent=2)
 
-        logger.info("[parallel_agents] Mindra didn't return a final answer, falling back to direct calls")
+        logger.info("[parallel_agents] Mindra didn't return answers, falling back to direct calls")
 
     # --- Direct path: asyncio.gather with Nevermined x402 ---
     report["orchestrator"] = "direct" if not _mindra.is_available() else "mindra+direct"
@@ -1264,14 +1285,14 @@ async def _exec_parallel_agents(query: str, agent_count: int = 3) -> str:
 
 async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     """
-    Autonomous Business Intelligence pipeline orchestrated via Mindra (when available):
-    1. Exa: research the business domain
-    2. Marketplace: find relevant AI services (Nevermined + Apify)
-    3. Audit: score top candidates (quality, latency, price)
-    4. Buy: purchase from the 2 best services
-    5. TrinityOS: call real Trinity agents for live business intelligence
-    6. Mindra: self-healing orchestration + anomaly detection (seamless)
-    7. Synthesize: combine all outputs into a business recommendation
+    Autonomous Business Intelligence pipeline with 5 parallel Mindra GTM agents:
+    1. Mindra (5 agents in parallel): Web Search, LinkedIn, Google Workspace, GitHub, Content Creator
+    2. Exa: competitive intelligence on the business domain
+    3. Nevermined Discovery: find marketplace sellers
+    4. OpenAI: quality audit of top candidates
+    5. Nevermined x402: purchase from viable services
+    6. TrinityOS: call real Trinity agents for live business intelligence
+    7. Synthesize: combine all outputs (Mindra + marketplace + Trinity) into GTM strategy
     """
     report: dict = {
         "goal": goal,
@@ -1287,21 +1308,16 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
     trinity_outputs: list[dict] = []
     trinity_agents_called = 0
 
-    # --- Mindra: start background orchestration for self-healing + anomaly detection ---
-    mindra_task = None
+    # --- Mindra: launch 5 GTM agents in parallel (Web Search, LinkedIn, Google, GitHub, Content) ---
+    mindra_parallel_task = None
     if _mindra.is_available():
-        logger.info("[Mindra] Starting seamless orchestration for business strategy")
+        logger.info("[Mindra] Launching 5 parallel GTM agents for: %s", goal)
         _analytics_mod.record_tool_call("mindra", "ok")
         report["orchestrator"] = "mindra"
-        mindra_task = asyncio.create_task(_mindra.run_and_collect(
-            task=(
-                f"Orchestrate a business intelligence pipeline for: {goal}\n"
-                f"Budget: {budget_credits} credits.\n"
-                "Steps: market research, service discovery, quality audit, purchasing, synthesis.\n"
-                "Monitor for anomalies in audit scores and agent responses."
-            ),
+        report["steps"].append("mindra_parallel_agents")
+        mindra_parallel_task = asyncio.create_task(_mindra.run_parallel_tasks(
+            goal=goal,
             metadata={"source": "gtmagent", "goal": goal, "budget": budget_credits},
-            auto_approve=True,
             timeout_seconds=90.0,
         ))
 
@@ -1418,14 +1434,16 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         for c in candidates
     ]
 
-    # --- Step 2b: Liveness probe — skip vendors that don't respond at all ---
+    # --- Step 2b: Liveness probe — skip vendors whose endpoints are dead/broken ---
     live_candidates = []
     async def _probe(entry: dict) -> bool:
         ep = _resolve_target_url(entry.get("endpoint_url", ""))
         try:
             async with httpx.AsyncClient(timeout=5.0) as c:
                 r = await c.post(ep, json={"query": "ping"}, headers={"Content-Type": "application/json"})
-                return r.status_code < 600  # any HTTP response = server is alive
+                # 200 = open/free endpoint, 402 = paywall (alive and purchasable)
+                # 404/500/502/503/504 = broken/dead endpoint, don't buy
+                return r.status_code in (200, 201, 402, 403)
         except Exception:
             return False
 
@@ -1474,6 +1492,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 "avg_latency_ms": _lat.get("avg_ms", 0),
                 "plan_id": candidate.get("plan_id", ""),
                 "agent_id": candidate.get("agent_id", ""),
+                "description": candidate.get("description", ""),
+                "category": candidate.get("category", ""),
+                "body_field": candidate.get("body_field", ""),
             })
             _analytics_mod.record_tool_call("openai", "ok")
         except Exception as e:
@@ -1482,6 +1503,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 "error": str(e), "overall_score": 0,
                 "plan_id": candidate.get("plan_id", ""),
                 "agent_id": candidate.get("agent_id", ""),
+                "description": candidate.get("description", ""),
+                "category": candidate.get("category", ""),
+                "body_field": candidate.get("body_field", ""),
             })
 
     scored.sort(key=lambda x: x.get("overall_score", 0), reverse=True)
@@ -1566,7 +1590,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         # Check capability relevance if we analyzed the goal
         cap_match = 0.0
         if goal_capabilities:
-            desc = (pick.get("endpoint", "") + " " + team).lower()
+            desc = (pick.get("endpoint", "") + " " + team + " " + pick.get("description", "") + " " + pick.get("category", "")).lower()
             cap_match = sum(1 for cap in goal_capabilities if any(w in desc for w in cap.split())) / len(goal_capabilities)
 
         # Check existing subscription status → HOLD if already well-funded
@@ -1688,6 +1712,9 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                     "repeat_purchase": is_repeat,
                     "already_had_plan": already_subscribed,
                     "new_balance": current_balance,
+                    "description": pick.get("description", ""),
+                    "category": pick.get("category", ""),
+                    "body_field": pick.get("body_field", ""),
                 }
             else:
                 return {"team": team, "purchased": False, "error": f"order_plan returned: {order}"}
@@ -1781,30 +1808,47 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         for e in viable[:8]
     ]
 
-    # --- Step 6: EXECUTE — call each purchased agent with the business goal ---
-    # This is the "business running" phase: real API calls to each purchased service.
+    # --- Step 6: EXECUTE — call each purchased service with an appropriate task ---
+    # Each service is different (DeFi tool, social monitor, data scraper, etc.)
+    # so we craft a service-specific request based on what it actually does.
     business_outputs: list[dict] = []
     if successful and NVM_BUYER_API_KEY:
         async def _exec_agent(p: dict) -> dict:
-            """Call a purchased agent endpoint with the goal and return its response.
+            """Call a purchased service endpoint with a task appropriate to what it does.
 
-            Uses proper x402 scheme detection: probes the endpoint first, then
-            picks card-delegation or crypto token based on what the seller requires.
+            Uses the service description/category to craft the right request,
+            and proper x402 scheme detection for auth.
             """
             team = p.get("team", "")
             ep = p.get("endpoint", "")
             plan_id = p.get("plan_id", "")
             agent_id = p.get("agent_id", "")
+            description = p.get("description", "")
+            category = p.get("category", "")
+            body_field = p.get("body_field", "")
             if not ep or not plan_id:
                 return {"team": team, "status": "skip", "reason": "no endpoint or plan_id"}
             try:
-                biz_query = (
-                    f"Business goal: {goal}.\n"
-                    f"Task: Provide specific, actionable intelligence for this business RIGHT NOW.\n"
-                    f"Include: (1) 3 concrete market insights, (2) top 3 immediate actions to take today, "
-                    f"(3) one key metric to track. Be direct and specific — no generic advice."
-                )
-                body = {"message": biz_query, "query": biz_query, "prompt": biz_query}
+                # Build a service-appropriate request based on what this service actually does
+                if description or category:
+                    svc_context = f"{description} (category: {category})" if category else description
+                    biz_query = (
+                        f"I need your service for this business goal: {goal}.\n"
+                        f"Your service: {svc_context}\n"
+                        f"Please execute your core function for this goal. "
+                        f"Return concrete, actionable results — data, recommendations, or actions taken."
+                    )
+                else:
+                    biz_query = (
+                        f"Business goal: {goal}.\n"
+                        f"Execute your core service for this goal and return actionable results."
+                    )
+
+                # Use the correct body field for this service's API
+                if body_field:
+                    body = {body_field: biz_query, "query": biz_query}
+                else:
+                    body = {"message": biz_query, "query": biz_query, "prompt": biz_query}
                 headers_base = {"Content-Type": "application/json", "x-caller-id": "GTMAgent-Buyer"}
 
                 real_plan_id = plan_id
@@ -1819,7 +1863,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                             real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(
                                 probe, plan_id, agent_id
                             )
-                            logger.info(f"[exec_agent] {team}: probe → 402, scheme={real_scheme}")
+                            logger.info(f"[exec_agent] {team}: probe → 402, scheme={real_scheme}, real_plan={real_plan_id[:20]}…")
                         elif probe.status_code == 200:
                             try:
                                 data = probe.json()
@@ -1829,6 +1873,15 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                                 return {"team": team, "status": "ok", "content": probe.text[:300], "endpoint": ep}
                     except httpx.TimeoutException:
                         pass
+
+                    # Ensure we're subscribed to the plan the endpoint actually requires
+                    # (may differ from the marketplace plan_id we purchased in Step 4)
+                    if real_plan_id:
+                        sub_info = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _ensure_plan_subscribed(real_plan_id)
+                        )
+                        if not sub_info.get("subscribed"):
+                            logger.warning(f"[exec_agent] {team}: subscription check failed for {real_plan_id[:20]}…: {sub_info.get('error','')[:80]}")
 
                     # Get scheme-aware token
                     if real_scheme == "nvm:card-delegation":
@@ -1854,29 +1907,35 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                             return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
                         except Exception:
                             return {"team": team, "status": "ok", "content": resp.text[:300], "endpoint": ep}
-                    elif resp.status_code == 403 and real_scheme != "nvm:card-delegation":
-                        logger.info(f"[exec_agent] {team}: 403 with {real_scheme}, retrying with card-delegation")
-                        fallback_token = await asyncio.get_event_loop().run_in_executor(
-                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
-                        )
-                        if fallback_token:
-                            headers["payment-signature"] = fallback_token
-                            retry = await client.post(ep, json=body, headers=headers)
-                            if retry.status_code == 200:
-                                try:
-                                    data = retry.json()
-                                    content = _extract_agent_content(data)
-                                    return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
-                                except Exception:
-                                    return {"team": team, "status": "ok", "content": retry.text[:300], "endpoint": ep}
-                        return {"team": team, "status": f"http_{resp.status_code}", "reason": "Token rejected — tried both crypto and card-delegation"}
+                    elif resp.status_code == 403:
+                        resp_body = resp.text[:300]
+                        logger.warning(f"[exec_agent] {team}: 403 with {real_scheme}, plan={real_plan_id[:20]}…, body={resp_body[:120]}")
+                        if real_scheme != "nvm:card-delegation":
+                            logger.info(f"[exec_agent] {team}: retrying with card-delegation fallback")
+                            fallback_token = await asyncio.get_event_loop().run_in_executor(
+                                None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
+                            )
+                            if fallback_token:
+                                headers["payment-signature"] = fallback_token
+                                retry = await client.post(ep, json=body, headers=headers)
+                                if retry.status_code == 200:
+                                    try:
+                                        data = retry.json()
+                                        content = _extract_agent_content(data)
+                                        return {"team": team, "status": "ok", "content": str(content)[:800], "endpoint": ep}
+                                    except Exception:
+                                        return {"team": team, "status": "ok", "content": retry.text[:300], "endpoint": ep}
+                                logger.warning(f"[exec_agent] {team}: card-delegation retry also {retry.status_code}: {retry.text[:120]}")
+                        return {"team": team, "status": f"http_{resp.status_code}", "reason": f"Token rejected (plan={real_plan_id[:20]}…, scheme={real_scheme}): {resp_body[:150]}"}
                     else:
-                        return {"team": team, "status": f"http_{resp.status_code}"}
+                        return {"team": team, "status": f"http_{resp.status_code}", "reason": resp.text[:150]}
             except Exception as exc:
                 return {"team": team, "status": "error", "reason": str(exc)[:80]}
 
+        # Try first batch (up to 3); if none succeed, try remaining purchased agents
         exec_tasks = [_exec_agent(p) for p in successful[:3]]
         exec_results = await asyncio.gather(*exec_tasks, return_exceptions=True)
+        failed_results = []
         for r in exec_results:
             if isinstance(r, Exception):
                 logger.warning(f"[exec_agent] exception: {r}")
@@ -1887,13 +1946,27 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                     business_outputs.append(r)
                     _analytics_mod.record_tool_call("nvm", "ok")
                 else:
-                    # Still include as "attempted" so UI can show partial info
-                    business_outputs.append({
-                        "team": r.get("team", ""),
-                        "status": r.get("status", "error"),
-                        "content": f"Agent responded with {r.get('status','unknown')} — {r.get('reason', 'no details')}",
-                        "endpoint": r.get("endpoint", ""),
-                    })
+                    failed_results.append(r)
+
+        # If all first-batch agents failed, try remaining purchased agents as fallback
+        if not business_outputs and len(successful) > 3:
+            logger.info(f"[exec_agent] First batch all failed, trying {len(successful[3:])} remaining agents")
+            fallback_tasks = [_exec_agent(p) for p in successful[3:6]]
+            fallback_results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+            for r in fallback_results:
+                if isinstance(r, dict) and r.get("status") == "ok":
+                    business_outputs.append(r)
+                    _analytics_mod.record_tool_call("nvm", "ok")
+                elif isinstance(r, dict):
+                    failed_results.append(r)
+
+        for r in failed_results:
+            business_outputs.append({
+                "team": r.get("team", ""),
+                "status": r.get("status", "error"),
+                "content": f"Agent responded with {r.get('status','unknown')} — {r.get('reason', 'no details')}",
+                "endpoint": r.get("endpoint", ""),
+            })
 
     report["business_outputs"] = business_outputs
 
@@ -1951,32 +2024,72 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
                 f"Include concrete data points and recommendations."
             )
             try:
-                token = await asyncio.get_event_loop().run_in_executor(
-                    None, lambda: _get_buyer_token(plan_id, agent_id)
-                )
-                if not token:
-                    return {"agent": team, "endpoint": ep, "status": "no_token", "content": ""}
                 body = {body_field: biz_prompt, "query": biz_prompt, "message": biz_prompt}
+                headers_base = {"Content-Type": "application/json", "x-caller-id": "GTMAgent-Buyer"}
+
+                real_plan_id = plan_id
+                real_agent_id = agent_id
+                real_scheme = "nvm:erc4337"
+
                 async with httpx.AsyncClient(timeout=45.0) as client:
-                    resp = await client.post(
-                        ep,
-                        json=body,
-                        headers={"Content-Type": "application/json", "payment-signature": token},
-                    )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    content = (
-                        data.get("response") or data.get("answer") or
-                        data.get("content") or data.get("result") or
-                        data.get("message") or data.get("output") or
-                        data.get("text") or ""
-                    )
-                    if isinstance(content, (list, dict)):
-                        content = json.dumps(content)[:800]
-                    _analytics_mod.record_tool_call("nevermined", "ok")
-                    return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
-                else:
-                    return {"agent": team, "endpoint": ep, "status": f"http_{resp.status_code}", "content": ""}
+                    # Probe to discover the required payment scheme
+                    try:
+                        probe = await client.post(ep, json=body, headers=headers_base, timeout=8.0)
+                        if probe.status_code == 402:
+                            real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(
+                                probe, plan_id, agent_id
+                            )
+                            logger.info(f"[trinity] {team}: probe → 402, scheme={real_scheme}")
+                        elif probe.status_code == 200:
+                            data = probe.json()
+                            content = _extract_agent_content(data)
+                            return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
+                    except httpx.TimeoutException:
+                        pass
+
+                    # Ensure subscription to the plan the endpoint requires
+                    if real_plan_id:
+                        sub_info = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _ensure_plan_subscribed(real_plan_id)
+                        )
+                        if not sub_info.get("subscribed"):
+                            logger.warning(f"[trinity] {team}: subscription failed for {real_plan_id[:20]}…: {sub_info.get('error','')[:80]}")
+
+                    # Get scheme-aware token
+                    if real_scheme == "nvm:card-delegation":
+                        token = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
+                        )
+                    else:
+                        token = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _get_buyer_token(real_plan_id, real_agent_id)
+                        )
+                    if not token:
+                        return {"agent": team, "endpoint": ep, "status": "no_token", "content": ""}
+
+                    headers = dict(headers_base)
+                    headers["payment-signature"] = token
+                    resp = await client.post(ep, json=body, headers=headers)
+
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        content = _extract_agent_content(data)
+                        _analytics_mod.record_tool_call("nevermined", "ok")
+                        return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
+                    elif resp.status_code == 403 and real_scheme != "nvm:card-delegation":
+                        logger.info(f"[trinity] {team}: 403 with {real_scheme}, retrying card-delegation")
+                        fallback_token = await asyncio.get_event_loop().run_in_executor(
+                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
+                        )
+                        if fallback_token:
+                            headers["payment-signature"] = fallback_token
+                            retry = await client.post(ep, json=body, headers=headers)
+                            if retry.status_code == 200:
+                                data = retry.json()
+                                content = _extract_agent_content(data)
+                                _analytics_mod.record_tool_call("nevermined", "ok")
+                                return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
+                    return {"agent": team, "endpoint": ep, "status": f"http_{resp.status_code}", "content": resp.text[:150]}
             except Exception as exc:
                 return {"agent": team, "endpoint": ep, "status": "error", "content": str(exc)[:100]}
 
@@ -2118,37 +2231,78 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5) -> str:
         "next_suggested_actions": suggested_actions,
     }
 
-    # --- Mindra: collect background orchestration results (self-healing, anomaly detection) ---
-    if mindra_task is not None:
+    # --- Mindra: collect parallel GTM agent results ---
+    if mindra_parallel_task is not None:
         try:
-            mindra_result = await mindra_task
-            report["mindra_status"] = mindra_result.get("status", "unknown")
-            report["mindra_execution_id"] = mindra_result.get("execution_id", "")
-            report["self_healing"] = mindra_result.get("status") == "completed"
+            mindra_results = await mindra_parallel_task
+            mindra_agents_report = {}
+            n_succeeded = 0
+            all_mindra_insights = []
+
+            for agent_id, result in mindra_results.items():
+                agent_name = _mindra.MINDRA_GTM_AGENTS.get(agent_id, {}).get("name", agent_id)
+                status = result.get("status", "unknown")
+                answer = result.get("final_answer", "")
+                mindra_agents_report[agent_id] = {
+                    "name": agent_name,
+                    "status": status,
+                    "execution_id": result.get("execution_id", ""),
+                    "answer": answer[:600] if answer else "",
+                    "tool_count": len(result.get("tool_results", [])),
+                    "approvals": result.get("approvals_handled", 0),
+                }
+                if status == "completed" and answer:
+                    n_succeeded += 1
+                    all_mindra_insights.append(f"[{agent_name}]: {answer[:400]}")
+                logger.info(f"[Mindra] {agent_name}: {status} ({len(answer)} chars)")
+
+            report["mindra_agents"] = mindra_agents_report
+            report["mindra_succeeded"] = n_succeeded
+            report["mindra_total"] = len(mindra_results)
+            report["orchestrator"] = "mindra"
+            report["self_healing"] = n_succeeded > 0
             report["anomaly_detection"] = True
-            report["mindra_tool_results"] = mindra_result.get("tool_results", [])
-            if mindra_result.get("final_answer"):
-                report["mindra_insights"] = mindra_result["final_answer"][:500]
-            logger.info(f"[Mindra] Orchestration complete: {mindra_result.get('status')}")
+
+            if all_mindra_insights:
+                report["mindra_insights"] = "\n\n".join(all_mindra_insights)
+
+                # Synthesize Mindra insights into the overall strategy
+                if OPENAI_API_KEY:
+                    try:
+                        _mindra_client = OpenAI(api_key=OPENAI_API_KEY)
+                        _mindra_synth = _mindra_client.chat.completions.create(
+                            model=MODEL_ID,
+                            messages=[
+                                {"role": "system", "content": (
+                                    "You are a GTM strategist. You received intelligence from 5 parallel research agents. "
+                                    "Synthesize their findings into a cohesive go-to-market brief: "
+                                    "key market insights, relevant contacts/connections, available tools, and content strategy."
+                                )},
+                                {"role": "user", "content": (
+                                    f"Goal: {goal}\n\n"
+                                    f"Agent intelligence:\n" + "\n\n".join(all_mindra_insights)
+                                )},
+                            ],
+                            max_tokens=600, temperature=0.3,
+                        )
+                        report["mindra_gtm_synthesis"] = _mindra_synth.choices[0].message.content.strip()
+                        _analytics_mod.record_tool_call("openai", "ok")
+                    except Exception as _ms_err:
+                        logger.warning(f"[Mindra] GTM synthesis failed: {_ms_err}")
+
+            logger.info(f"[Mindra] Parallel GTM complete: {n_succeeded}/{len(mindra_results)} agents succeeded")
         except Exception as e:
-            logger.warning(f"[Mindra] Background orchestration error (non-fatal): {e}")
+            logger.warning(f"[Mindra] Parallel agents error (non-fatal): {e}")
             report["mindra_status"] = "error"
 
     return json.dumps(report, indent=2)
 
 
-async def chat_stream(message: str, history: list[dict], budget_credits: int = 5) -> AsyncGenerator[dict, None]:
+async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict, None]:
     """Run the chat agent and yield SSE events."""
     client = OpenAI(api_key=OPENAI_API_KEY)
 
-    # Inject session budget so LLM uses it and can skip asking if already set
-    budget_note = (
-        f"\n\n## Session budget\nThe user has set a budget of **{budget_credits} credits** "
-        f"for this session via the budget bar. "
-        f"Use this as the `budget_credits` value when calling `execute_business_strategy`. "
-        f"Do NOT ask for budget again — it is already set to {budget_credits}."
-    )
-    messages = [{"role": "system", "content": SYSTEM_PROMPT + budget_note}]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages.extend(history)
     messages.append({"role": "user", "content": message})
 
@@ -2184,22 +2338,31 @@ async def chat_stream(message: str, history: list[dict], budget_credits: int = 5
                         {"id": "trinity",   "name": "AbilityAI Trinity",    "status": "queued"},
                     ]
                     if mindra_active:
-                        agents_init.insert(0, {"id": "mindra", "name": "Mindra Orchestrator", "status": "queued"})
+                        agents_init = [
+                            {"id": "mindra-web",      "name": "Mindra: Web Search",     "status": "queued"},
+                            {"id": "mindra-linkedin",  "name": "Mindra: LinkedIn",       "status": "queued"},
+                            {"id": "mindra-google",    "name": "Mindra: Google",         "status": "queued"},
+                            {"id": "mindra-github",    "name": "Mindra: GitHub",         "status": "queued"},
+                            {"id": "mindra-content",   "name": "Mindra: Content",        "status": "queued"},
+                        ] + agents_init
                     yield {"event": "tool_step", "data": {"agent_init": agents_init}}
                     await asyncio.sleep(0.05)
                     if mindra_active:
-                        yield {"event": "tool_step", "data": {"agent": "mindra", "status": "running", "msg": "Orchestrating workflow..."}}
-                        await asyncio.sleep(0.05)
+                        for _ma_id, _ma_msg in [
+                            ("mindra-web", "Searching market trends..."),
+                            ("mindra-linkedin", "Finding connections & posts..."),
+                            ("mindra-google", "Scanning workspace..."),
+                            ("mindra-github", "Discovering repos & tools..."),
+                            ("mindra-content", "Drafting GTM content..."),
+                        ]:
+                            yield {"event": "tool_step", "data": {"agent": _ma_id, "status": "running", "msg": _ma_msg}}
+                            await asyncio.sleep(0.02)
                     yield {"event": "tool_step", "data": {"agent": "exa",   "status": "running", "msg": "Researching domain..."}}
                     await asyncio.sleep(0.05)
                     yield {"event": "tool_step", "data": {"agent": "apify", "status": "running", "msg": "Searching Apify Store..."}}
                     await asyncio.sleep(0.05)
                     yield {"event": "tool_step", "data": {"agent": "trinity", "status": "running", "msg": "Connecting Trinity..."}}
                     await asyncio.sleep(0)
-
-                # Inject session budget into execute_business_strategy if not already set
-                if fn_name == "execute_business_strategy" and "budget_credits" not in fn_args:
-                    fn_args["budget_credits"] = budget_credits
 
                 result = await _exec_tool(fn_name, fn_args)
 
@@ -2211,15 +2374,40 @@ async def chat_stream(message: str, history: list[dict], budget_credits: int = 5
                         n_audited = len([s for s in r.get("audit_scores", []) if not s.get("error")])
                         n_bought  = len([p for p in r.get("purchases", []) if p.get("purchased")])
                         n_agents  = len([a for a in r.get("agents", []) if a.get("purchased")])
-                        # Mindra orchestrator status (runs seamlessly in background)
-                        if r.get("orchestrator") in ("mindra", "mindra+direct"):
-                            mindra_ok = r.get("mindra_status") == "completed" or r.get("self_healing")
-                            n_mindra_tools = len(r.get("mindra_tool_results", r.get("tool_results", [])))
-                            yield {"event": "tool_step", "data": {
-                                "agent": "mindra",
-                                "status": "done" if mindra_ok else "failed",
-                                "msg": f"{'Self-healed' if mindra_ok else 'Fallback'} — {n_mindra_tools} tools",
-                            }}
+
+                        # Mindra parallel agent statuses
+                        mindra_agents = r.get("mindra_agents", {})
+                        _agent_id_map = {
+                            "web_search": "mindra-web",
+                            "linkedin": "mindra-linkedin",
+                            "google": "mindra-google",
+                            "github": "mindra-github",
+                            "content": "mindra-content",
+                        }
+                        if mindra_agents:
+                            for _mid, _sse_id in _agent_id_map.items():
+                                _ma = mindra_agents.get(_mid, {})
+                                _ma_status = _ma.get("status", "unknown")
+                                _ma_ok = _ma_status == "completed"
+                                _ma_tools = _ma.get("tool_count", 0)
+                                _ma_answer_len = len(_ma.get("answer", ""))
+                                if _ma_ok and _ma_answer_len > 0:
+                                    _msg = f"{_ma_tools} tools — {_ma_answer_len} chars"
+                                elif _ma_status == "error":
+                                    _msg = _ma.get("answer", "error")[:20] or "failed"
+                                else:
+                                    _msg = _ma_status
+                                yield {"event": "tool_step", "data": {
+                                    "agent": _sse_id,
+                                    "status": "done" if _ma_ok else "failed",
+                                    "msg": _msg,
+                                }}
+                        elif r.get("orchestrator") == "mindra":
+                            for _sse_id in _agent_id_map.values():
+                                yield {"event": "tool_step", "data": {
+                                    "agent": _sse_id, "status": "failed", "msg": "no result",
+                                }}
+
                         # TrinityOS agent status
                         n_trinity = r.get("trinity_agents_succeeded", 0)
                         n_trinity_called = r.get("trinity_agents_called", 0)
