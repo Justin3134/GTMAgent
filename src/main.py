@@ -48,6 +48,8 @@ from src.seller import (  # noqa: E402
     pricing,
     stats,
     services,
+    credits_balance,
+    chain,
     health as seller_health,
 )
 from src.buyer import (  # noqa: E402
@@ -145,9 +147,11 @@ app.add_api_route("/monitor", monitor_endpoint, methods=["POST"])
 app.add_api_route("/data",    data_endpoint,    methods=["POST"])
 app.add_api_route("/sample",  sample_endpoint,  methods=["GET"])
 app.add_api_route("/pricing", pricing,          methods=["GET"])
-app.add_api_route("/stats",   stats,            methods=["GET"])
+app.add_api_route("/stats",    stats,           methods=["GET"])
 app.add_api_route("/services", services,        methods=["GET"])
-app.add_api_route("/health",  seller_health,    methods=["GET"])
+app.add_api_route("/credits",  credits_balance, methods=["GET"])
+app.add_api_route("/chain",    chain,           methods=["GET"])
+app.add_api_route("/health",   seller_health,   methods=["GET"])
 
 # Buyer / chat routes
 app.add_api_route("/api/status",    api_status,    methods=["GET"])
@@ -155,6 +159,7 @@ app.add_api_route("/api/audits",    api_audits,    methods=["GET"])
 app.add_api_route("/api/decisions", api_decisions, methods=["GET"])
 app.add_api_route("/api/budget",    api_budget,    methods=["GET"])
 app.add_api_route("/api/trigger",   api_trigger,   methods=["POST"])
+app.add_api_route("/api/run-now",   api_trigger,   methods=["POST"])
 app.add_api_route("/api/chat",      api_chat,      methods=["POST"])
 
 

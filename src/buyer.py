@@ -590,19 +590,28 @@ async def api_chat(request: Request):
 
     async def event_generator():
         full_response = ""
-        async for event in chat_stream(message, history):
-            yield {"event": event["event"], "data": json.dumps(event["data"])}
-            if event["event"] == "token":
-                full_response += event["data"].get("text", "")
+        try:
+            async for event in chat_stream(message, history):
+                yield {"event": event["event"], "data": json.dumps(event["data"])}
+                if event["event"] == "token":
+                    full_response += event["data"].get("text", "")
+                # Yield a keepalive comment during long operations to prevent browser timeout
+                await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"chat_stream error: {e}")
+            yield {"event": "token", "data": json.dumps({"text": f"\n\n*Error: {e}*"})}
+        finally:
+            yield {"event": "done", "data": "{}"}
+            history.append({"role": "user", "content": message})
+            if full_response:
+                history.append({"role": "assistant", "content": full_response})
+            if len(history) > 40:
+                history[:] = history[-30:]
+            _chat_histories[session_id] = history
 
-        history.append({"role": "user", "content": message})
-        if full_response:
-            history.append({"role": "assistant", "content": full_response})
-        if len(history) > 40:
-            history[:] = history[-30:]
-        _chat_histories[session_id] = history
-
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(event_generator(), ping=15)
 
 
 @buyer_app.get("/health")
