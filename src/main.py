@@ -56,6 +56,7 @@ from src.buyer import (  # noqa: E402
     api_budget,
     api_trigger,
     api_chat,
+    api_run_agent,
     _buyer_loop,
 )
 from src.web import DASHBOARD_HTML  # noqa: E402
@@ -187,6 +188,7 @@ app.add_api_route("/api/budget",    api_budget,    methods=["GET"])
 app.add_api_route("/api/trigger",   api_trigger,   methods=["POST"])
 app.add_api_route("/api/run-now",   api_trigger,   methods=["POST"])
 app.add_api_route("/api/chat",      api_chat,      methods=["POST"])
+app.add_api_route("/api/run-agent", api_run_agent, methods=["POST"])
 
 
 @app.get("/api/keys-status")

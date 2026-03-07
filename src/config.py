@@ -43,41 +43,9 @@ MINDRA_WORKFLOW_SLUG = os.environ.get("MINDRA_WORKFLOW_SLUG", "gtmagent")
 
 MARKETPLACE_CSV_URL = os.environ.get("MARKETPLACE_CSV_URL", "")
 
-# Known purchasable agents — buyer wallet (0x390bd…) is confirmed subscribed to these plans.
-# These produce REAL Nevermined x402 transactions when called.
-KNOWN_PURCHASABLE = [
-    {
-        "team_name": "Full Stack Agents",
-        "description": "AbilityAI Nexus hub — multi-agent orchestration, business strategy, and AI workflows",
-        "endpoint_url": "https://us14.abilityai.dev/api/paid/nexus/chat",
-        "plan_id": "62132339823439076950399695238634927378738244877172775303591114485168828025410",
-        "agent_id": "38193170898726307123033205989462035601957241449542699022794362936331517059909",
-        "price_credits": "free",
-        "category": "AI,orchestration",
-    },
-    {
-        # AbilityAI social monitor — same plan as nexus (62132339…), different agent_id
-        "team_name": "TrinityAgents",
-        "description": "AbilityAI social monitor — real-time social media trend analysis and monitoring",
-        "endpoint_url": "https://us14.abilityai.dev/api/paid/social-monitor/chat",
-        "plan_id": "62132339823439076950399695238634927378738244877172775303591114485168828025410",
-        "agent_id": "102575793179870454885693749389321147500444253017787287080547662366660764018939",
-        "body_field": "message",
-        "price_credits": "free",
-        "category": "social,monitoring,trends",
-    },
-    {
-        # WAGMI / AgentBank — paid plan ($0.01/credit). Subscribe at checkout URL below.
-        # Checkout: https://nevermined.app/checkout/22048418573188197583118225823590719469073032209055332683827376109982321424950
-        "team_name": "WAGMI",
-        "description": "AgentBank — autonomous DeFi deposit and yield optimization agent",
-        "endpoint_url": "https://agentbank-nine.vercel.app/api/deposit",
-        "plan_id": "22048418573188197583118225823590719469073032209055332683827376109982321424950",
-        "agent_id": "103952894214985075133486264961407358632754398912965838438307744576640790529205",
-        "price_credits": "$0.01",
-        "category": "DeFi,finance,yield",
-    },
-]
+# Purchasable agents are discovered dynamically from the Nevermined marketplace.
+# No hardcoded/preset agents — everything is fetched from the Discovery API.
+KNOWN_PURCHASABLE: list[dict] = []
 
 MAX_DAILY_SPEND = int(os.environ.get("MAX_DAILY_SPEND", "100"))
 MAX_PER_REQUEST = int(os.environ.get("MAX_PER_REQUEST", "10"))

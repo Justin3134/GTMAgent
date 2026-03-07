@@ -729,6 +729,120 @@ async def api_chat(request: Request):
     return EventSourceResponse(event_generator(), ping=5)  # ping every 5s to keep Render connection alive
 
 
+@buyer_app.post("/api/run-agent")
+async def api_run_agent(request: Request):
+    """Directly execute a purchased agent's workflow.
+
+    Handles x402 payment auth, scheme detection, and returns the raw agent response.
+    """
+    from src.chat import (
+        _extract_agent_content,
+        _resolve_target_url,
+        _parse_x402_payment_required,
+        _get_buyer_token,
+        _get_card_delegation_token,
+        _ensure_plan_subscribed,
+    )
+    from src.config import NVM_BUYER_API_KEY
+
+    body = await request.json()
+    endpoint_url = body.get("endpoint_url", "")
+    plan_id = body.get("plan_id", "")
+    agent_id = body.get("agent_id", "")
+    query = body.get("query", "")
+    body_field = body.get("body_field", "")
+
+    if not endpoint_url or not query:
+        return {"error": "endpoint_url and query are required"}
+
+    ep = _resolve_target_url(endpoint_url)
+
+    if body_field:
+        req_body: dict = {body_field: query, "query": query}
+    else:
+        req_body = {"message": query, "query": query, "prompt": query, "input": query}
+
+    headers_base = {"Content-Type": "application/json", "x-caller-id": "GTMAgent-Buyer"}
+
+    try:
+        real_plan_id = plan_id
+        real_agent_id = agent_id
+        real_scheme = "nvm:erc4337"
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            probe = await client.post(ep, json=req_body, headers=headers_base, timeout=10.0)
+
+            if probe.status_code == 200:
+                try:
+                    data = probe.json()
+                    content = _extract_agent_content(data)
+                    return {"status": "ok", "content": str(content)[:2000], "raw": data}
+                except Exception:
+                    return {"status": "ok", "content": probe.text[:2000]}
+
+            if probe.status_code == 402:
+                real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(
+                    probe, plan_id, agent_id
+                )
+
+            if real_plan_id and NVM_BUYER_API_KEY:
+                sub_info = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: _ensure_plan_subscribed(real_plan_id)
+                )
+                if not sub_info.get("subscribed"):
+                    logger.warning(f"[run-agent] subscription check: {sub_info}")
+
+                if real_scheme == "nvm:card-delegation":
+                    token = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
+                    )
+                else:
+                    token = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _get_buyer_token(real_plan_id, real_agent_id)
+                    )
+
+                if not token:
+                    return {"status": "error", "content": "Could not obtain payment token — check NVM_BUYER_API_KEY"}
+
+                headers = dict(headers_base)
+                headers["payment-signature"] = token
+                resp = await client.post(ep, json=req_body, headers=headers)
+
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        content = _extract_agent_content(data)
+                        return {"status": "ok", "content": str(content)[:2000], "raw": data}
+                    except Exception:
+                        return {"status": "ok", "content": resp.text[:2000]}
+
+                if resp.status_code == 403 and real_scheme != "nvm:card-delegation":
+                    fallback_token = await asyncio.get_event_loop().run_in_executor(
+                        None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
+                    )
+                    if fallback_token:
+                        headers["payment-signature"] = fallback_token
+                        retry = await client.post(ep, json=req_body, headers=headers)
+                        if retry.status_code == 200:
+                            try:
+                                data = retry.json()
+                                content = _extract_agent_content(data)
+                                return {"status": "ok", "content": str(content)[:2000], "raw": data}
+                            except Exception:
+                                return {"status": "ok", "content": retry.text[:2000]}
+                        return {"status": "error", "content": f"Agent returned {retry.status_code} after auth retry"}
+
+                return {"status": "error", "content": f"Agent returned HTTP {resp.status_code}: {resp.text[:300]}"}
+
+            return {"status": "error", "content": f"No plan_id and endpoint returned {probe.status_code}"}
+
+    except httpx.TimeoutException:
+        return {"status": "error", "content": "Agent timed out (60s) — the workflow may take longer than expected"}
+    except Exception as e:
+        logger.error(f"[run-agent] error: {e}")
+        return {"status": "error", "content": f"Error calling agent: {str(e)[:200]}"}
+
+
 @buyer_app.get("/health")
 async def health():
     return {"status": "healthy", "service": "GTMAgent-Buyer"}

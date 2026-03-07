@@ -1532,11 +1532,6 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5, progress_q
 
     viable = [e for e in marketplace_entries if _is_viable(e)]
 
-    # Score relevance: keyword overlap + big bonus for known-purchasable agents
-    PURCHASABLE_HOSTS = {
-        e["endpoint_url"].split("//")[-1].split("/")[0]
-        for e in KNOWN_PURCHASABLE
-    }
     goal_words = set(w.lower() for w in goal.split() if len(w) > 3)
 
     def relevance(entry: dict) -> float:
@@ -1545,35 +1540,19 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5, progress_q
             entry.get("team_name", ""), " ".join(entry.get("keywords", [])),
         ]).lower()
         kw_score = sum(1 for w in goal_words if w in text)
-        host = entry.get("endpoint_url", "").split("//")[-1].split("/")[0]
-        # Large bonus for agents we know can be purchased (real NVM tx)
-        purchasable_bonus = 3.0 if any(k in host for k in PURCHASABLE_HOSTS) else 0
-        return kw_score + purchasable_bonus
+        has_plan = 1.0 if entry.get("plan_id") else 0
+        return kw_score + has_plan
 
-    # Always include known-purchasable agents at the front, then add marketplace results.
-    # KNOWN_PURCHASABLE entries are never deduped by host — different plan IDs = different NVM tx.
-    known_plan_ids = {e["plan_id"] for e in KNOWN_PURCHASABLE}
-    known_viable = [e for e in KNOWN_PURCHASABLE if _is_viable(e)]
-    known_eps = {e["endpoint_url"] for e in KNOWN_PURCHASABLE}
-    extra_viable = [e for e in viable if e.get("endpoint_url") not in known_eps]
-    combined = known_viable + extra_viable
-
-    ranked_extra = sorted(extra_viable, key=relevance, reverse=True)
-    # Deduplicate marketplace extras by host (but keep all KNOWN_PURCHASABLE)
+    ranked = sorted(viable, key=relevance, reverse=True)
     seen_hosts: set[str] = set()
-    for e in known_viable:
-        host = e.get("endpoint_url", "").split("//")[-1].split("/")[0]
-        seen_hosts.add(host)  # track but don't skip known purchasable
-
-    deduped_extra = []
-    for e in ranked_extra:
+    deduped: list[dict] = []
+    for e in ranked:
         host = e.get("endpoint_url", "").split("//")[-1].split("/")[0]
         if host not in seen_hosts:
             seen_hosts.add(host)
-            deduped_extra.append(e)
+            deduped.append(e)
 
-    # Final candidate list: all known purchasable + up to 2 extra from marketplace (max 4 total for speed)
-    candidates = (known_viable + deduped_extra[:2])[:4]
+    candidates = deduped[:6]
 
     report["candidates"] = [
         {"team": c.get("team_name", ""), "endpoint": c.get("endpoint_url", ""), "relevance": relevance(c)}
@@ -2186,134 +2165,14 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5, progress_q
     if apify_run_data:
         report["apify_run_result"] = apify_run_data
 
-    # --- Step 6c: TrinityOS multi-agent execution: call real Trinity agents on abilityai.dev ---
-    _progress("Calling TrinityOS agents (Nexus + Social Monitor)", agent="trinity", status="running")
-    trinity_outputs.clear()
-    trinity_agents_called = 0
-    trinity_endpoints = [
-        k for k in KNOWN_PURCHASABLE
-        if "abilityai.dev" in k.get("endpoint_url", "")
-    ]
-    if trinity_endpoints and NVM_BUYER_API_KEY:
-        async def _call_trinity(agent_cfg: dict) -> dict:
-            team = agent_cfg.get("team_name", "Trinity")
-            ep = agent_cfg["endpoint_url"]
-            plan_id = agent_cfg.get("plan_id", "")
-            agent_id = agent_cfg.get("agent_id", "")
-            body_field = agent_cfg.get("body_field", "query")
-            biz_prompt = (
-                f"Business goal: {goal}.\n"
-                f"Provide specific, actionable intelligence. "
-                f"Include concrete data points and recommendations."
-            )
-            try:
-                body = {body_field: biz_prompt, "query": biz_prompt, "message": biz_prompt}
-                headers_base = {"Content-Type": "application/json", "x-caller-id": "GTMAgent-Buyer"}
+    report["trinity_agents"] = []
+    report["trinity_agents_called"] = 0
+    report["trinity_agents_succeeded"] = 0
 
-                real_plan_id = plan_id
-                real_agent_id = agent_id
-                real_scheme = "nvm:erc4337"
-
-                async with httpx.AsyncClient(timeout=45.0) as client:
-                    # Probe to discover the required payment scheme
-                    try:
-                        probe = await client.post(ep, json=body, headers=headers_base, timeout=8.0)
-                        if probe.status_code == 402:
-                            real_plan_id, real_agent_id, real_scheme = _parse_x402_payment_required(
-                                probe, plan_id, agent_id
-                            )
-                            logger.info(f"[trinity] {team}: probe → 402, scheme={real_scheme}")
-                        elif probe.status_code == 200:
-                            data = probe.json()
-                            content = _extract_agent_content(data)
-                            return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
-                    except httpx.TimeoutException:
-                        pass
-
-                    # Ensure subscription to the plan the endpoint requires
-                    if real_plan_id:
-                        sub_info = await asyncio.get_event_loop().run_in_executor(
-                            None, lambda: _ensure_plan_subscribed(real_plan_id)
-                        )
-                        if not sub_info.get("subscribed"):
-                            logger.warning(f"[trinity] {team}: subscription failed for {real_plan_id[:20]}…: {sub_info.get('error','')[:80]}")
-
-                    # Get scheme-aware token
-                    if real_scheme == "nvm:card-delegation":
-                        token = await asyncio.get_event_loop().run_in_executor(
-                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
-                        )
-                    else:
-                        token = await asyncio.get_event_loop().run_in_executor(
-                            None, lambda: _get_buyer_token(real_plan_id, real_agent_id)
-                        )
-                    if not token:
-                        return {"agent": team, "endpoint": ep, "status": "no_token", "content": ""}
-
-                    headers = dict(headers_base)
-                    headers["payment-signature"] = token
-                    resp = await client.post(ep, json=body, headers=headers)
-
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        content = _extract_agent_content(data)
-                        _analytics_mod.record_tool_call("nevermined", "ok")
-                        return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
-                    elif resp.status_code == 403 and real_scheme != "nvm:card-delegation":
-                        logger.info(f"[trinity] {team}: 403 with {real_scheme}, retrying card-delegation")
-                        fallback_token = await asyncio.get_event_loop().run_in_executor(
-                            None, lambda: _get_card_delegation_token(real_plan_id, real_agent_id)
-                        )
-                        if fallback_token:
-                            headers["payment-signature"] = fallback_token
-                            retry = await client.post(ep, json=body, headers=headers)
-                            if retry.status_code == 200:
-                                data = retry.json()
-                                content = _extract_agent_content(data)
-                                _analytics_mod.record_tool_call("nevermined", "ok")
-                                return {"agent": team, "endpoint": ep, "status": "ok", "content": str(content)[:800]}
-                    return {"agent": team, "endpoint": ep, "status": f"http_{resp.status_code}", "content": resp.text[:150]}
-            except Exception as exc:
-                return {"agent": team, "endpoint": ep, "status": "error", "content": str(exc)[:100]}
-
-        trinity_tasks = [_call_trinity(tc) for tc in trinity_endpoints]
-        trinity_results = await asyncio.gather(*trinity_tasks, return_exceptions=True)
-        for r in trinity_results:
-            if isinstance(r, dict):
-                trinity_agents_called += 1
-                trinity_outputs.append(r)
-                if r.get("status") == "ok":
-                    logger.info(f"[TrinityOS] {r['agent']} responded: {len(r.get('content',''))} chars")
-
-    report["trinity_agents"] = trinity_outputs
-    report["trinity_agents_called"] = trinity_agents_called
-    report["trinity_agents_succeeded"] = len([t for t in trinity_outputs if t.get("status") == "ok"])
-
-    # Build trinity_plan from REAL agent responses (not GPT-generated)
-    real_trinity_plan = []
-    for t in trinity_outputs:
-        agent_name = t.get("agent", "")
-        template = "cornelius" if "Nexus" in agent_name or "Full Stack" in agent_name else "ruby"
-        role = "Orchestration & Business Intelligence" if template == "cornelius" else "Social Monitoring & Trends"
-        real_trinity_plan.append({
-            "name": agent_name,
-            "role": role,
-            "template": template,
-            "task": f"Real-time analysis for: {goal}",
-            "status": t.get("status", "unknown"),
-            "live_output": t.get("content", "")[:500],
-            "endpoint": t.get("endpoint", ""),
-        })
-    if real_trinity_plan:
-        report["trinity_plan"] = real_trinity_plan
-
-    # --- Step 6d: Execution synthesis — combine ALL real agent outputs ---
-    _progress("Synthesizing all agent outputs into GTM strategy")
+    # --- Step 6c: Execution synthesis — combine ALL real agent outputs ---
+    _progress("Synthesizing all agent outputs into strategy")
     if OPENAI_API_KEY:
-        all_live_outputs = (
-            [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
-            + [t for t in trinity_outputs if t.get("status") == "ok" and t.get("content")]
-        )
+        all_live_outputs = [b for b in business_outputs if b.get("status") == "ok" and b.get("content")]
         exa_ctx = " ".join(exa_data.get("highlights", []) or [])[:600]
         comp_ctx = " ".join(c.get("snippet", "") for c in report.get("exa_research", {}).get("competitors", []))[:400]
 
@@ -2329,7 +2188,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5, progress_q
                     messages=[
                         {"role": "system", "content": (
                             "You are a business intelligence synthesizer. You receive REAL outputs from "
-                            "live AI agents (marketplace services + TrinityOS agents). Synthesize them into "
+                            "live AI agents purchased from the Nevermined marketplace. Synthesize them into "
                             "actionable business intelligence. Reference which agent provided what insight."
                         )},
                         {"role": "user", "content": (
@@ -2355,8 +2214,7 @@ async def _exec_business_strategy(goal: str, budget_credits: int = 5, progress_q
                         {"role": "user", "content": (
                             f"Goal: {goal}\n"
                             f"Competitive research (Exa): {exa_for_synth}\n"
-                            f"Agents attempted: {trinity_agents_called} TrinityOS + "
-                            f"{len(business_outputs)} marketplace (some may have failed due to sandbox issues)\n\n"
+                            f"Agents attempted: {len(business_outputs)} marketplace agents (some may have failed)\n\n"
                             "Generate 3-4 concrete recommendations based on available research."
                         )},
                     ],
@@ -2712,17 +2570,17 @@ async def chat_stream(message: str, history: list[dict]) -> AsyncGenerator[dict,
         ]})
         messages.append({"role": "tool", "tool_call_id": "auto_1", "content": result[:8000]})
 
-        response = await client.chat.completions.create(
+        stream = await client.chat.completions.create(
             model=MODEL_ID,
             messages=messages,
-            tools=TOOLS,
             temperature=0.3,
+            stream=True,
         )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield {"event": "token", "data": {"text": delta.content}}
         _analytics_mod.record_tool_call("openai", "ok")
-        choice = response.choices[0]
-        text = choice.message.content or ""
-        if text:
-            yield {"event": "token", "data": {"text": text}}
         return
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]

@@ -87,25 +87,41 @@ async def run_workflow(
         )
 
 
-async def stream_events(execution_id: str) -> AsyncGenerator[MindraEvent, None]:
+async def stream_events(execution_id: str, stream_url: str = "") -> AsyncGenerator[MindraEvent, None]:
     """Connect to the SSE stream for a running execution and yield events."""
-    url = f"{MINDRA_BASE}/api/v1/workflows/execute/{execution_id}/stream"
+    if stream_url:
+        url = stream_url if stream_url.startswith("http") else f"{MINDRA_BASE}{stream_url}"
+    else:
+        url = f"{MINDRA_BASE}/api/v1/workflows/execute/{execution_id}/stream"
+
+    logger.info(f"[Mindra] Streaming from: {url}")
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=10.0)) as client:
-        async with client.stream(
-            "GET", url, headers={"x-api-key": MINDRA_API_KEY}
-        ) as resp:
-            current_event = ""
-            async for line in resp.aiter_lines():
-                if line.startswith("event: "):
-                    current_event = line[7:].strip()
-                elif line.startswith("data: "):
-                    try:
-                        data = json.loads(line[6:])
-                    except (json.JSONDecodeError, ValueError):
-                        data = {"raw": line[6:]}
-                    yield MindraEvent(event_type=current_event or "unknown", data=data)
-                    current_event = ""
+        try:
+            async with client.stream(
+                "GET", url, headers={"x-api-key": MINDRA_API_KEY}
+            ) as resp:
+                if resp.status_code != 200:
+                    logger.error(f"[Mindra] Stream returned {resp.status_code}")
+                    yield MindraEvent(event_type="done", data={"status": "error", "final_answer": ""})
+                    return
+                current_event = ""
+                async for line in resp.aiter_lines():
+                    if line.startswith("event: "):
+                        current_event = line[7:].strip()
+                    elif line.startswith("data: "):
+                        try:
+                            data = json.loads(line[6:])
+                        except (json.JSONDecodeError, ValueError):
+                            data = {"raw": line[6:]}
+                        yield MindraEvent(event_type=current_event or "unknown", data=data)
+                        current_event = ""
+        except httpx.ConnectError as e:
+            logger.error(f"[Mindra] Stream connection failed: {e}")
+            yield MindraEvent(event_type="done", data={"status": "error", "final_answer": ""})
+        except httpx.ReadTimeout:
+            logger.error("[Mindra] Stream read timeout")
+            yield MindraEvent(event_type="done", data={"status": "timeout", "final_answer": ""})
 
 
 async def approve(execution_id: str, approval_id: str, reason: str = "") -> bool:
@@ -194,7 +210,7 @@ MINDRA_GTM_AGENTS = {
 async def run_parallel_tasks(
     goal: str,
     metadata: dict | None = None,
-    timeout_seconds: float = 90.0,
+    timeout_seconds: float = 120.0,
 ) -> dict[str, dict]:
     """Run 5 focused Mindra agent tasks in parallel for comprehensive GTM intelligence.
 
@@ -203,9 +219,11 @@ async def run_parallel_tasks(
     Returns a dict keyed by agent_id with their individual results.
     """
     if not is_available():
+        logger.warning("[Mindra] API key not configured — skipping parallel tasks")
         return {aid: {"status": "unavailable", "error": "Mindra API key not configured", "final_answer": ""}
                 for aid in MINDRA_GTM_AGENTS}
 
+    logger.info(f"[Mindra] Starting 5 parallel GTM agents for: {goal[:80]}")
     base_meta = metadata or {}
     coros = {}
     for agent_id, config in MINDRA_GTM_AGENTS.items():
@@ -225,8 +243,9 @@ async def run_parallel_tasks(
             results[agent_id] = {"status": "error", "error": str(result), "final_answer": ""}
         else:
             results[agent_id] = result
+            logger.info(f"[Mindra] {agent_id}: status={result.get('status')} answer_len={len(result.get('final_answer',''))} events={len(result.get('events',[]))}")
 
-    succeeded = sum(1 for r in results.values() if r.get("status") == "completed")
+    succeeded = sum(1 for r in results.values() if r.get("status") == "completed" and r.get("final_answer"))
     logger.info(f"[Mindra] Parallel tasks complete: {succeeded}/{len(results)} succeeded")
     return results
 
@@ -268,7 +287,7 @@ async def run_and_collect(
 
     try:
         async with asyncio.timeout(timeout_seconds):
-            async for event in stream_events(execution.execution_id):
+            async for event in stream_events(execution.execution_id, execution.stream_url):
                 result["events"].append({
                     "type": event.event_type,
                     "data": event.data,
@@ -309,5 +328,13 @@ async def run_and_collect(
 
     if not result["final_answer"] and result["chunks"]:
         result["final_answer"] = result["chunks"]
+
+    if not result["final_answer"] and result["tool_results"]:
+        result["final_answer"] = json.dumps(result["tool_results"][:3], default=str)[:800]
+
+    if result["status"] == "running":
+        result["status"] = "completed" if result["final_answer"] else "error"
+        if not result["final_answer"]:
+            result["error"] = result["error"] or "No output received from workflow"
 
     return result

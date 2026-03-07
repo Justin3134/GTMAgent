@@ -15,25 +15,26 @@ DASHBOARD_HTML = """\
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>GTMAgent</title>
 <style>
-:root { --bg: #000; --fg: #fff; --dim: #555; --dim2: #333; --border: #1a1a1a; --green: #34d058; --orange: #e3b341; --red: #f85149; --input-bg: #0a0a0a; }
+:root { --bg: #0a0a0a; --fg: #eee; --dim: #666; --dim2: #3a3a3a; --border: #1c1c1c; --green: #34d058; --orange: #e3b341; --red: #f85149; --input-bg: #111; --accent: #6ecbf5; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-family: -apple-system, 'Inter', 'Segoe UI', 'Roboto', sans-serif;
   background: var(--bg); color: var(--fg);
   line-height: 1.5; font-size: 13px;
   -webkit-font-smoothing: antialiased;
   height: 100vh; overflow: hidden;
 }
 
-.shell { display: grid; grid-template-columns: 1fr 320px; grid-template-rows: 48px 1fr; height: 100vh; }
+.shell { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 52px 1fr; height: 100vh; }
 
 header {
   grid-column: 1 / -1;
   padding: 0 24px;
   border-bottom: 1px solid var(--border);
   display: flex; justify-content: space-between; align-items: center;
+  background: linear-gradient(180deg, #111 0%, var(--bg) 100%);
 }
-header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; }
+header h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.08em; color: var(--accent); }
 .header-right { display: flex; gap: 16px; align-items: center; }
 .svc-status { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--dim); }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim2); flex-shrink: 0; }
@@ -50,11 +51,11 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 .msg.user { align-self: flex-end; }
 .msg.assistant { align-self: flex-start; }
 .msg-bubble {
-  padding: 10px 14px; border-radius: 6px; font-size: 13px;
-  line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  padding: 12px 16px; border-radius: 12px; font-size: 13px;
+  line-height: 1.7; white-space: pre-wrap; word-break: break-word;
 }
-.msg.user .msg-bubble { background: #111; border: 1px solid var(--border); }
-.msg.assistant .msg-bubble { background: transparent; border: 1px solid var(--border); }
+.msg.user .msg-bubble { background: #1a1a2a; border: 1px solid #252540; border-radius: 12px 12px 4px 12px; }
+.msg.assistant .msg-bubble { background: #141414; border: 1px solid var(--border); border-radius: 12px 12px 12px 4px; }
 
 .msg-tool {
   display: flex; align-items: center; gap: 8px;
@@ -161,26 +162,29 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 .chat-input-area {
   padding: 16px 24px; border-top: 1px solid var(--border);
   display: flex; gap: 10px; align-items: center;
+  background: linear-gradient(0deg, #0e0e0e 0%, transparent 100%);
 }
 #chat-input {
   flex: 1; background: var(--input-bg); border: 1px solid var(--border);
   color: var(--fg); font-family: inherit; font-size: 13px;
-  padding: 10px 14px; border-radius: 6px; outline: none;
+  padding: 12px 16px; border-radius: 10px; outline: none;
   resize: none; min-height: 20px; max-height: 120px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-#chat-input:focus { border-color: var(--dim); }
+#chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(110,203,245,0.1); }
 #chat-input::placeholder { color: var(--dim2); }
 #send-btn {
-  background: var(--fg); color: var(--bg); border: none;
-  font-family: inherit; font-size: 11px; letter-spacing: 0.08em;
-  text-transform: uppercase; padding: 10px 16px; border-radius: 6px;
-  cursor: pointer; font-weight: 500; white-space: nowrap;
+  background: var(--accent); color: #000; border: none;
+  font-family: inherit; font-size: 11px; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 12px 20px; border-radius: 10px;
+  cursor: pointer; font-weight: 600; white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
 }
-#send-btn:hover { opacity: 0.85; }
-#send-btn:disabled { opacity: 0.3; cursor: default; }
+#send-btn:hover { background: #8dd7f8; transform: scale(1.02); }
+#send-btn:disabled { opacity: 0.3; cursor: default; transform: none; }
 
 /* ---- Stats sidebar ---- */
-.stats-panel { overflow-y: auto; padding: 20px 20px; }
+.stats-panel { overflow-y: auto; padding: 16px 16px; background: #0d0d0d; border-left: 1px solid var(--border); }
 .stats-panel::-webkit-scrollbar { width: 4px; }
 .stats-panel::-webkit-scrollbar-thumb { background: var(--dim2); border-radius: 2px; }
 
@@ -585,8 +589,138 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 .agent-pulse.failed  { background: var(--red); }
 .agent-pulse.idle    { background: var(--dim2); }
 
-.welcome { color: var(--dim); font-size: 12px; line-height: 1.8; padding: 40px 0; }
-.welcome strong { color: var(--fg); font-weight: 500; }
+.welcome { color: var(--dim); font-size: 13px; line-height: 2; padding: 60px 20px; max-width: 520px; }
+.welcome strong { color: var(--accent); font-weight: 600; font-size: 18px; display: block; margin-bottom: 4px; }
+
+/* ── Sidebar Workflow Tree ── */
+.wf-tree { padding: 4px 0 4px 6px; }
+.wf-node {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 4px; font-size: 10px;
+  border: 1px solid var(--border); background: #050505;
+  transition: border-color 0.3s, background 0.2s;
+}
+.wf-node.root { border-color: var(--orange); background: #080500; }
+.wf-node.hub { border-color: var(--dim2); }
+.wf-node.hub.running { border-color: var(--orange); background: #0d0800; }
+.wf-node.hub.done { border-color: var(--green); background: #030a03; }
+.wf-node.leaf { border: none; background: transparent; padding: 3px 6px; }
+.wf-node.leaf.running { background: #0d080044; }
+.wf-node.leaf.done { background: #030a0344; }
+.wf-node.leaf.failed { background: #0a030344; }
+.wf-node.result { border-color: var(--dim2); }
+.wf-node.result.done { border-color: var(--green); background: #030a03; }
+.wf-node-icon { font-size: 11px; flex-shrink: 0; width: 16px; text-align: center; }
+.wf-node-info { flex: 1; min-width: 0; }
+.wf-node-name { font-weight: 500; font-size: 10px; }
+.wf-node-status { font-size: 9px; color: var(--dim); }
+.wf-branch { padding-left: 14px; position: relative; }
+.wf-connector { position: relative; height: 16px; }
+.wf-line {
+  position: absolute; left: 4px; top: 0; bottom: 0;
+  width: 1px; background: var(--dim2);
+}
+.wf-children { padding-left: 14px; position: relative; margin: 2px 0; }
+.wf-children::before {
+  content: ''; position: absolute; left: 4px; top: 0; bottom: 12px;
+  width: 1px; background: var(--dim2);
+}
+.wf-child { position: relative; margin-bottom: 1px; }
+.wf-child-line {
+  position: absolute; left: -10px; top: 12px;
+  width: 10px; height: 1px; background: var(--dim2);
+}
+.wf-child-line::before {
+  content: ''; position: absolute; left: 0; top: -8px;
+  width: 1px; height: 8px; background: var(--dim2);
+}
+
+/* ── Flow View Tree Layout ── */
+.ft-tree { max-width: 920px; margin: 0 auto; position: relative; }
+.ft-node {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: #060606; padding: 16px 20px;
+  position: relative; z-index: 2;
+  transition: border-color 0.3s;
+}
+.ft-node.goal { border-color: var(--orange); background: #080500; max-width: 480px; margin: 0 auto; text-align: center; }
+.ft-node.hub { border-color: #1a3044; background: #050a14; }
+.ft-node.hub.discover { border-color: #332200; background: #080500; }
+.ft-node.hub.evaluate { border-color: #2a2a00; background: #080800; }
+.ft-node.hub.result { border-color: #1a4a1a; background: #030a03; }
+.ft-node-label {
+  font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.ft-node-title { font-size: 15px; font-weight: 500; }
+.ft-children {
+  display: grid; gap: 8px; margin-top: 16px;
+  position: relative; z-index: 2;
+}
+.ft-children.cols-5 { grid-template-columns: repeat(5, 1fr); }
+.ft-children.cols-3 { grid-template-columns: repeat(3, 1fr); }
+@media(max-width:700px) {
+  .ft-children.cols-5 { grid-template-columns: repeat(3, 1fr); }
+  .ft-children.cols-3 { grid-template-columns: 1fr; }
+}
+.ft-child {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; background: #050505; font-size: 10px;
+  transition: border-color 0.3s, transform 0.15s;
+}
+.ft-child:hover { transform: translateY(-1px); }
+.ft-child.ok { border-color: #1a4a1a; }
+.ft-child.err { border-color: #4a1a1a; }
+.ft-child.pending { border-color: #1a3044; }
+.ft-child-icon { font-size: 14px; margin-bottom: 4px; }
+.ft-child-name { font-weight: 500; margin-bottom: 2px; }
+.ft-child-status { font-size: 9px; display: flex; align-items: center; gap: 4px; }
+.ft-child-detail { font-size: 9px; color: var(--dim2); margin-top: 4px; line-height: 1.4; }
+.ft-connector {
+  position: relative; height: 32px; display: flex; align-items: center; justify-content: center;
+}
+.ft-connector::before {
+  content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: linear-gradient(to bottom, var(--dim2), var(--dim2) 60%, transparent);
+}
+.ft-connector-label {
+  position: relative; z-index: 1; font-size: 8px; color: var(--dim2);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  background: var(--bg); padding: 0 8px;
+}
+
+/* ── Exa Competitive Table ── */
+.exa-comp-grid { display: grid; gap: 6px; }
+.exa-comp-row {
+  display: grid; grid-template-columns: 1fr 2fr auto; gap: 12px;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: #050505; align-items: center; font-size: 10px;
+}
+.exa-comp-row:hover { background: #0a0a0a; }
+.exa-comp-name { font-weight: 500; }
+.exa-comp-snippet { color: var(--dim); font-size: 9px; line-height: 1.4; }
+.exa-comp-link { color: #dd8833; text-decoration: none; font-size: 9px; white-space: nowrap; }
+.exa-comp-link:hover { text-decoration: underline; }
+.exa-summary {
+  border: 1px solid #332200; border-radius: 6px; padding: 12px 14px;
+  background: #080500; margin-top: 10px;
+}
+.exa-summary-title {
+  font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: #dd8833; margin-bottom: 6px;
+}
+.exa-summary-body { font-size: 10px; color: #bbb; line-height: 1.5; }
+
+/* ── Synthesis Card (Flow View) ── */
+.ft-synthesis {
+  border: 1px solid #1a3044; border-radius: 6px; padding: 14px 16px;
+  background: #050a14; margin-top: 12px;
+}
+.ft-synthesis-label {
+  font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: #6ecbf5; margin-bottom: 6px;
+}
+.ft-synthesis-body { font-size: 10px; color: #bbb; line-height: 1.5; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -602,7 +736,7 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
       <div class="svc-status" id="tool-nvm-wrap" title="Nevermined x402 — payment infrastructure"><span class="dot" id="dot-nvm"></span><span style="font-size:10px">Nevermined</span><span id="tool-nvm-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div class="svc-status" id="tool-zc-wrap" title="ZeroClick native ads — live"><span class="dot" id="dot-zc"></span><span style="font-size:10px">ZeroClick</span><span id="tool-zc-status" style="font-size:9px;color:var(--green);margin-left:3px">live</span></div>
       <div class="svc-status" id="tool-apify-wrap" title="Apify Store — web scrapers and AI actors marketplace"><span class="dot up" id="dot-apify"></span><span style="font-size:10px">Apify</span><span id="tool-apify-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
-      <div class="svc-status" id="tool-mindra-wrap" title="Mindra — 5 parallel GTM agents (Web Search, LinkedIn, Google, GitHub, Content)"><span class="dot up" id="dot-mindra"></span><span style="font-size:10px">Mindra&times;5</span><span id="tool-mindra-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
+      <div class="svc-status" id="tool-mindra-wrap" title="Marketplace — agent workflows from Nevermined"><span class="dot up" id="dot-mindra"></span><span style="font-size:10px">Marketplace</span><span id="tool-mindra-count" style="font-size:9px;color:var(--dim);margin-left:3px;display:none"></span></div>
       <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
       <div style="display:flex;gap:4px">
         <button id="btn-chat" onclick="showView('chat')" style="font-size:10px;font-family:inherit;background:var(--fg);border:1px solid var(--fg);color:var(--bg);padding:3px 10px;border-radius:3px;cursor:pointer;letter-spacing:0.05em">Chat</button>
@@ -650,17 +784,16 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     <div class="chat-messages" id="messages">
       <div class="welcome">
         <strong>GTMAgent</strong> — Autonomous Business Intelligence<br><br>
-        Describe a business goal and I will search the marketplace, evaluate options, purchase the best services via Nevermined, and return a strategy.<br><br>
-        Try asking:<br>
+        Tell me what you want to build. I'll search the Nevermined marketplace for real AI agent workflows, audit and buy the best ones, then execute them and synthesize a strategy for you.<br><br>
+        Try:<br>
+        &bull; I want to build a marketing agency<br>
         &bull; I want to build a fintech AI assistant<br>
         &bull; Research the AI agent market for investment<br>
-        &bull; Find the best social monitoring agent<br>
-        &bull; audit https://some-endpoint.com<br>
-        &bull; what services are available in the marketplace<br>
+        &bull; Find the best social monitoring tools<br>
       </div>
     </div>
     <div class="chat-input-area">
-      <input id="chat-input" placeholder="Describe a business goal..." autocomplete="off" />
+      <input id="chat-input" placeholder="What do you want to build?" autocomplete="off" />
       <button id="send-btn">Send</button>
     </div>
     </div><!-- end view-chat -->
@@ -668,23 +801,34 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
 
   <div class="stats-panel">
 
-    <div class="section-label">Mindra GTM Agents <span style="font-size:9px;color:#6ecbf5">· 5 parallel</span></div>
-    <div class="orch-grid" id="orch-grid-mindra" style="grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:4px;display:grid">
-      <div class="agent-box idle" id="orch-mindra-web"     ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x1F50D; Web Search</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-mindra-linkedin" ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x25C8; LinkedIn</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-mindra-google"   ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x25A3; Google</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-mindra-github"   ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x2B22; GitHub</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-mindra-content"  ><div class="agent-box-name" style="color:#6ecbf5;font-size:9px">&#x270E; Content</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-    </div>
-    <div style="height:4px"></div>
-    <div class="section-label">Live Orchestration <span style="font-size:9px;color:var(--dim)">· marketplace agents</span></div>
-    <div class="orch-grid" id="orch-grid">
-      <div class="agent-box idle" id="orch-exa"        ><div class="agent-box-name">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-apify"      ><div class="agent-box-name">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-openai"     ><div class="agent-box-name">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-nevermined" ><div class="agent-box-name">Nevermined</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-trinity"    ><div class="agent-box-name" style="color:var(--green)">&#x25B2; TrinityOS: Nexus</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
-      <div class="agent-box idle" id="orch-social"     ><div class="agent-box-name" style="color:var(--green)">&#x25B2; TrinityOS: Social</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div>
+    <div class="section-label">Pipeline <span style="font-size:9px;color:var(--dim)">· GTMAgent workflow</span></div>
+    <div class="wf-tree" id="wf-tree">
+      <div class="wf-node root" id="wf-goal"><div class="wf-node-icon">&#x25CE;</div><div class="wf-node-info"><div class="wf-node-name">Goal</div><div class="wf-node-status">waiting for input</div></div></div>
+      <div class="wf-branch">
+        <div class="wf-connector"><div class="wf-line"></div></div>
+        <div class="wf-node hub idle" id="wf-discover-hub"><div class="wf-node-icon" style="color:#dd8833">&#x25C9;</div><div class="wf-node-info"><div class="wf-node-name">Discover</div><div class="wf-node-status"><span class="agent-pulse idle"></span>standby</div></div></div>
+        <div class="wf-children">
+          <div class="wf-child"><div class="wf-child-line"></div><div class="wf-node leaf idle" id="orch-exa"><div class="wf-node-icon" style="color:#dd8833;font-size:8px">&#x25C7;</div><div class="wf-node-info"><div class="agent-box-name" style="font-size:9px">Exa Research</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div></div></div>
+          <div class="wf-child"><div class="wf-child-line"></div><div class="wf-node leaf idle" id="orch-apify"><div class="wf-node-icon" style="color:#8844cc;font-size:8px">&#x25B3;</div><div class="wf-node-info"><div class="agent-box-name" style="font-size:9px">Apify Store</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div></div></div>
+          <div class="wf-child"><div class="wf-child-line"></div><div class="wf-node leaf idle" id="orch-nevermined"><div class="wf-node-icon" style="color:#6688dd;font-size:8px">&#x25A0;</div><div class="wf-node-info"><div class="agent-box-name" style="font-size:9px">Nevermined</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div></div></div>
+        </div>
+      </div>
+      <div class="wf-branch">
+        <div class="wf-connector"><div class="wf-line"></div></div>
+        <div class="wf-node hub idle" id="wf-evaluate-hub"><div class="wf-node-icon" style="color:var(--orange)">&#x25C6;</div><div class="wf-node-info"><div class="wf-node-name">Audit &amp; Buy</div><div class="wf-node-status"><span class="agent-pulse idle"></span>standby</div></div></div>
+        <div class="wf-children">
+          <div class="wf-child"><div class="wf-child-line"></div><div class="wf-node leaf idle" id="orch-openai"><div class="wf-node-icon" style="color:var(--orange);font-size:8px">&#x25CB;</div><div class="wf-node-info"><div class="agent-box-name" style="font-size:9px">OpenAI Audit</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div></div></div>
+          <div class="wf-child"><div class="wf-child-line"></div><div class="wf-node leaf idle" id="orch-trinity"><div class="wf-node-icon" style="color:#6688dd;font-size:8px">&#x25A0;</div><div class="wf-node-info"><div class="agent-box-name" style="font-size:9px">Purchase</div><div class="agent-box-status"><span class="agent-pulse idle"></span>standby</div></div></div></div>
+        </div>
+      </div>
+      <div class="wf-branch">
+        <div class="wf-connector"><div class="wf-line"></div></div>
+        <div class="wf-node hub idle" id="wf-mindra-hub"><div class="wf-node-icon" style="color:var(--green)">&#x25B6;</div><div class="wf-node-info"><div class="wf-node-name">Execute Agents</div><div class="wf-node-status"><span class="agent-pulse idle"></span>standby</div></div></div>
+      </div>
+      <div class="wf-branch">
+        <div class="wf-connector"><div class="wf-line"></div></div>
+        <div class="wf-node result idle" id="wf-result"><div class="wf-node-icon" style="color:var(--green)">&#x25C9;</div><div class="wf-node-info"><div class="wf-node-name">Strategy Output</div><div class="wf-node-status">waiting</div></div></div>
+      </div>
     </div>
     <div class="divider"></div>
 
@@ -714,12 +858,9 @@ header h1 { font-size: 13px; font-weight: 400; letter-spacing: 0.15em; text-tran
     <div class="stat-row"><span class="stat-key">conversions</span><span class="stat-val" id="zc-conv">0</span></div>
     <div class="divider"></div>
 
-    <div class="section-label">Mindra <span style="font-size:9px;letter-spacing:0;color:#6ecbf5" id="mindra-status">ready</span></div>
-    <div style="font-size:9px;color:var(--dim2);margin-bottom:4px">5 parallel GTM agents</div>
-    <div class="stat-row"><span class="stat-key">orchestrations</span><span class="stat-val" id="mindra-calls">0</span></div>
-    <div class="stat-row"><span class="stat-key">agents succeeded</span><span class="stat-val" id="mindra-succeeded" style="color:#6ecbf5">0/5</span></div>
-    <div class="stat-row"><span class="stat-key">self-healing</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
-    <div class="stat-row"><span class="stat-key">anomaly detection</span><span class="stat-val" style="color:#6ecbf5">active</span></div>
+    <div class="section-label">Marketplace <span style="font-size:9px;letter-spacing:0;color:var(--dim)" id="mindra-status">ready</span></div>
+    <div class="stat-row"><span class="stat-key">agents found</span><span class="stat-val" id="mindra-succeeded" style="color:#6688dd">0</span></div>
+    <div class="stat-row"><span class="stat-key">runs</span><span class="stat-val" id="mindra-calls">0</span></div>
   </div>
 </div>
 
@@ -914,7 +1055,7 @@ function _arrow() {
 function renderFlowView(data) {
   const canvas = document.getElementById('flow-canvas');
   if (!data) {
-    canvas.innerHTML = '<div style="color:var(--dim2);padding:60px 0;text-align:center;font-size:12px">Run a strategy in Chat to see the workflow graph here.<br><br><span style="font-size:10px;color:var(--dim2)">Try: "I want to start a marketing agency"</span></div>';
+    canvas.innerHTML = '<div style="color:var(--dim2);padding:60px 0;text-align:center;font-size:12px">Run a strategy in Chat to see the workflow tree here.<br><br><span style="font-size:10px;color:var(--dim2)">Try: "I want to build a marketing agency"</span></div>';
     return;
   }
   const scored  = (data.audit_scores || []).filter(s => s.team);
@@ -929,300 +1070,209 @@ function renderFlowView(data) {
   const mindraGtm    = data.mindra_gtm_synthesis || '';
   const hasMindra    = Object.keys(mindraAgents).length > 0 || data.orchestrator === 'mindra';
 
-  let html = '<div class="fg-wrap" style="position:relative">';
+  let html = '<div class="ft-tree">';
 
-  // ── GOAL ──────────────────────────────────────────────────────────────────────
-  html += '<div id="fgn-goal" class="fg-goal-box">';
-  html += '<div class="fg-goal-sub">Goal</div>';
-  html += '<div class="fg-goal-title">' + e(data.goal||'') + '</div>';
-  if (caps.length) html += '<div class="fg-goal-caps">' + caps.slice(0,4).map(e).join(' · ') + '</div>';
+  // ── LEVEL 0: GOAL ──────────────────────────────────────────────────────────
+  html += '<div class="ft-node goal" id="fgn-goal">';
+  html += '<div class="ft-node-label" style="color:var(--orange);justify-content:center">&#x25CE; Goal</div>';
+  html += '<div class="ft-node-title">' + e(data.goal||'') + '</div>';
+  if (caps.length) html += '<div style="font-size:9px;color:var(--dim2);margin-top:6px">' + caps.slice(0,4).map(e).join(' · ') + '</div>';
   html += '</div>';
 
-  // ── MINDRA GTM — 5 parallel agents ─────────────────────────────────────────
+  // ── CONNECTOR: Goal → Mindra ──────────────────────────────────────────────
+  html += '<div class="ft-connector"><div class="ft-connector-label">research</div></div>';
+
+  // ── LEVEL 1: MINDRA GTM HUB ──────────────────────────────────────────────
   if (hasMindra) {
-    const mindraIds = {web_search:'Web Search', linkedin:'LinkedIn', google:'Google Workspace', github:'GitHub', content:'Content Creator'};
+    const mindraIds = {web_search:{name:'Web Search',icon:'&#x1F50D;'}, linkedin:{name:'LinkedIn',icon:'&#x25C8;'}, google:{name:'Google',icon:'&#x25A3;'}, github:{name:'GitHub',icon:'&#x2B22;'}, content:{name:'Content',icon:'&#x270E;'}};
     const mindraSucc = Object.values(mindraAgents).filter(a => a.status === 'completed' && (a.answer||'').length > 0).length;
     const mindraTotal = Object.keys(mindraAgents).length || 5;
-    html += '<div class="fg-stage" id="fgn-mindra" style="margin-top:44px;border-color:#1a3044">';
-    html += '<div class="fg-stage-lbl"><span class="fg-step-n" style="background:#0a1a2a;color:#6ecbf5">M</span> Mindra GTM Agents — ' + mindraSucc + '/' + mindraTotal + ' succeeded</div>';
-    html += '<div class="fg-stage-body">';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px">';
-    Object.entries(mindraIds).forEach(([mid, label]) => {
+
+    html += '<div class="ft-node hub" id="fgn-mindra">';
+    html += '<div class="ft-node-label" style="color:#6ecbf5">&#x2B22; Mindra GTM Agents <span style="color:' + (mindraSucc > 0 ? 'var(--green)' : 'var(--red)') + ';margin-left:auto">' + mindraSucc + '/' + mindraTotal + ' succeeded</span></div>';
+    html += '<div class="ft-children cols-5">';
+    Object.entries(mindraIds).forEach(([mid, cfg]) => {
       const ma = mindraAgents[mid] || {};
       const ok = ma.status === 'completed' && (ma.answer||'').length > 0;
       const errored = ma.status === 'error' || ma.status === 'timeout' || ma.status === 'unavailable';
-      const borderCol = ok ? '#1a4a1a' : errored ? '#4a1a1a' : '#1a3044';
+      const cls = ok ? 'ok' : errored ? 'err' : 'pending';
       const statusCol = ok ? 'var(--green)' : errored ? 'var(--red)' : '#6ecbf5';
-      const statusTxt = ok ? 'completed' : (ma.status || 'running');
+      const statusTxt = ok ? 'done' : (ma.status || 'running');
       const tools = ma.tool_count || 0;
-      html += '<div class="fg-mini-card" style="border-color:' + borderCol + '">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<div class="fg-mini-name" style="color:#6ecbf5">' + e(label) + '</div>';
-      html += '<div style="font-size:9px;font-weight:500;color:' + statusCol + '">' + e(statusTxt) + '</div>';
-      html += '</div>';
-      if (ok && tools > 0) html += '<div class="fg-mini-meta">' + tools + ' tools · ' + (ma.answer||'').length + ' chars</div>';
-      else if (ma.answer) html += '<div class="fg-mini-meta">' + e((ma.answer||'').substring(0,55)) + '</div>';
+      html += '<div class="ft-child ' + cls + '">';
+      html += '<div class="ft-child-icon" style="color:#6ecbf5">' + cfg.icon + '</div>';
+      html += '<div class="ft-child-name">' + e(cfg.name) + '</div>';
+      html += '<div class="ft-child-status"><span class="agent-pulse ' + (ok?'done':errored?'failed':'running') + '"></span><span style="color:' + statusCol + '">' + e(statusTxt) + '</span></div>';
+      if (ok && tools > 0) html += '<div class="ft-child-detail">' + tools + ' tools · ' + (ma.answer||'').length + ' chars</div>';
+      else if (ma.answer) html += '<div class="ft-child-detail">' + e((ma.answer||'').substring(0,60)) + '</div>';
       html += '</div>';
     });
     html += '</div>';
+
     if (mindraGtm) {
-      html += '<div style="margin-top:10px;padding:8px 10px;background:#050d14;border:1px solid #1a3044;border-radius:4px">';
-      html += '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#6ecbf5;margin-bottom:4px">GTM Strategy Synthesis</div>';
-      html += '<div style="font-size:10px;color:#bbb;line-height:1.5;white-space:pre-wrap">' + e(mindraGtm.substring(0, 600)) + '</div>';
+      html += '<div class="ft-synthesis">';
+      html += '<div class="ft-synthesis-label">GTM Strategy Synthesis</div>';
+      html += '<div class="ft-synthesis-body">' + e(mindraGtm.substring(0, 600)) + '</div>';
       html += '</div>';
     }
-    html += '</div></div>';
+    html += '</div>';
   }
 
-  // ── DISCOVER — 3 parallel branches ───────────────────────────────────────────
-  html += '<div style="margin-top:44px;position:relative;z-index:2" id="fgn-discover">';
-  html += '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.1em;color:var(--dim);text-align:center;margin-bottom:12px">01 · Discover — parallel search</div>';
-  html += '<div class="fg-branches">';
+  // ── CONNECTOR: Mindra → Discover ──────────────────────────────────────────
+  html += '<div class="ft-connector"><div class="ft-connector-label">discover</div></div>';
 
-  // Marketplace branch
-  html += '<div class="fg-branch mkt" id="fgn-mkt">';
-  html += '<div class="fg-branch-hdr"><span>Nevermined Marketplace</span><span style="font-size:9px;color:var(--dim)">' + allMkt.length + ' agents</span></div>';
-  html += '<div class="fg-branch-body">';
-  if (allMkt.length === 0) {
-    html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">Searching...</div>';
-  }
-  allMkt.slice(0,5).forEach(m => {
-    const sc  = scored.find(s => s.team === m.team);
-    const scv = sc ? sc.overall_score : null;
-    const bc  = scv === null ? 'var(--border)' : scv >= 0.6 ? '#1a4a1a' : scv >= 0.4 ? '#4a3a00' : '#4a1a1a';
-    const tc  = scv === null ? 'var(--dim)' : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
-    html += '<div class="fg-mini-card" style="border-color:' + bc + '">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,22)) + '</div>';
-    if (scv !== null) html += '<div style="font-size:11px;font-weight:500;color:' + tc + '">' + scv.toFixed(2) + '</div>';
-    html += '</div>';
-    html += '<div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,30)) + '</div>';
-    html += '</div>';
-  });
-  html += '</div></div>';
+  // ── LEVEL 2: DISCOVER — 3 branches ────────────────────────────────────────
+  html += '<div class="ft-node hub discover" id="fgn-discover">';
+  html += '<div class="ft-node-label" style="color:#dd8833">&#x25C9; Discover <span style="color:var(--dim);margin-left:auto">parallel search</span></div>';
+  html += '<div class="ft-children cols-3">';
 
-  // Exa competitive intelligence branch
-  const exaLabel = exaComps.length > 0 ? 'Exa · competitive landscape' : 'Exa · competitive research';
-  html += '<div class="fg-branch exa" id="fgn-exa">';
-  html += '<div class="fg-branch-hdr"><span>' + exaLabel + '</span><span style="font-size:9px;color:var(--dim)">' + exaComps.length + ' tools</span></div>';
-  html += '<div class="fg-branch-body">';
-  if (exaComps.length === 0) {
-    html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">No results — Exa key required</div>';
+  // -- Exa Competitive Intelligence --
+  html += '<div class="ft-child" style="border-color:#332200" id="fgn-exa">';
+  html += '<div class="ft-child-icon" style="color:#dd8833">&#x25C7;</div>';
+  html += '<div class="ft-child-name">Exa Competitive</div>';
+  html += '<div class="ft-child-status" style="color:var(--dim)">' + exaComps.length + ' competitors found</div>';
+  if (exaComps.length > 0) {
+    html += '<div class="exa-comp-grid" style="margin-top:8px">';
+    exaComps.forEach(comp => {
+      const dom = comp.domain || (comp.url||'').replace(/https?:\\/\\//,'').split('/')[0];
+      html += '<div class="exa-comp-row">';
+      html += '<div class="exa-comp-name">' + e((comp.title||dom).substring(0,24)) + '</div>';
+      html += '<div class="exa-comp-snippet">' + e((comp.snippet||'').substring(0,70)) + '</div>';
+      html += '<a href="' + e(comp.url||'#') + '" target="_blank" class="exa-comp-link">visit →</a>';
+      html += '</div>';
+    });
+    html += '</div>';
+    if (exa.summary || exa.highlights) {
+      const sumText = exa.summary || (exa.highlights||[]).slice(0,3).join(' ');
+      if (sumText) {
+        html += '<div class="exa-summary">';
+        html += '<div class="exa-summary-title">Competitive Landscape Summary</div>';
+        html += '<div class="exa-summary-body">' + e(sumText.substring(0,300)) + '</div>';
+        html += '</div>';
+      }
+    }
   }
-  exaComps.forEach(comp => {
-    const dom = comp.domain || comp.url.replace(/https?:\/\//,'').split('/')[0];
-    html += '<div class="fg-mini-card" style="border-color:#332200">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    html += '<div class="fg-mini-name">' + e((comp.title||dom).substring(0,28)) + '</div>';
-    html += '<a href="' + e(comp.url||'#') + '" target="_blank" style="font-size:9px;color:#dd8833;text-decoration:none;flex-shrink:0">→</a>';
-    html += '</div>';
-    if (comp.snippet) html += '<div class="fg-mini-meta">' + e(comp.snippet.substring(0,55)) + '…</div>';
-    html += '</div>';
-  });
-  // ZeroClick ad inline — naturally placed in competitive analysis
   if (ad) {
     html += '<div style="border:1px dashed #1a3a1a;border-radius:3px;padding:5px 7px;margin-top:6px;background:#030a03">';
-    html += '<div style="font-size:8px;color:var(--green);margin-bottom:2px">◉ ZeroClick — related tool</div>';
+    html += '<div style="font-size:8px;color:var(--green);margin-bottom:2px">&#x25CE; ZeroClick — related tool</div>';
     html += '<a href="' + e(ad.click_url||'#') + '" target="_blank" style="font-size:10px;color:#ccc;text-decoration:none;font-weight:500" data-offer-id="' + e(ad.id||'') + '">' + e((ad.title||ad.sponsor||'').substring(0,40)) + ' →</a>';
-    if (ad.message) html += '<div class="fg-mini-meta">' + e(ad.message.substring(0,50)) + '</div>';
     html += '</div>';
   }
-  html += '</div></div>';
+  html += '</div>';
 
-  // Apify Store branch
-  html += '<div class="fg-branch api" id="fgn-apify">';
-  html += '<div class="fg-branch-hdr"><span>Apify Store</span><span style="font-size:9px;color:var(--dim)">' + apify.length + ' actors</span></div>';
-  html += '<div class="fg-branch-body">';
-  if (apify.length === 0) {
-    html += '<div style="color:var(--dim2);font-size:10px;padding:6px 0">No actors found</div>';
-  }
-  apify.slice(0,4).forEach(a => {
-    const url = a.url || a.apify_url || '';
-    html += '<div class="fg-mini-card" style="border-color:#221133">';
+  // -- Nevermined Marketplace --
+  html += '<div class="ft-child" style="border-color:#223366" id="fgn-mkt">';
+  html += '<div class="ft-child-icon" style="color:#6688dd">&#x25A0;</div>';
+  html += '<div class="ft-child-name">Nevermined</div>';
+  html += '<div class="ft-child-status" style="color:var(--dim)">' + allMkt.length + ' agents</div>';
+  allMkt.slice(0,4).forEach(m => {
+    const sc = scored.find(s => s.team === m.team);
+    const scv = sc ? sc.overall_score : null;
+    const tc = scv === null ? 'var(--dim)' : scv >= 0.6 ? 'var(--green)' : scv >= 0.4 ? 'var(--orange)' : 'var(--red)';
+    html += '<div class="fg-mini-card" style="margin-top:4px;border-color:#223366">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    html += '<div class="fg-mini-name">' + e((a.name||'').replace('Apify: ','').substring(0,22)) + '</div>';
+    html += '<div class="fg-mini-name">' + e((m.team||'').substring(0,20)) + '</div>';
+    if (scv !== null) html += '<div style="font-size:11px;font-weight:500;color:' + tc + '">' + scv.toFixed(2) + '</div>';
+    html += '</div>';
+    html += '<div class="fg-mini-meta">' + e((m.category||m.price||'').substring(0,28)) + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // -- Apify Store --
+  html += '<div class="ft-child" style="border-color:#221133" id="fgn-apify">';
+  html += '<div class="ft-child-icon" style="color:#8844cc">&#x25B3;</div>';
+  html += '<div class="ft-child-name">Apify Store</div>';
+  html += '<div class="ft-child-status" style="color:var(--dim)">' + apify.length + ' actors</div>';
+  apify.slice(0,3).forEach(a => {
+    const url = a.url || a.apify_url || '';
+    html += '<div class="fg-mini-card" style="margin-top:4px;border-color:#221133">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<div class="fg-mini-name">' + e((a.name||'').replace('Apify: ','').substring(0,20)) + '</div>';
     if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#8844cc;text-decoration:none;flex-shrink:0">→</a>';
     html += '</div>';
     if (a.runs) html += '<div class="fg-mini-meta">' + Number(a.runs).toLocaleString() + ' runs</div>';
-    else if (a.description) html += '<div class="fg-mini-meta">' + e((a.description||'').substring(0,45)) + '</div>';
+    else if (a.description) html += '<div class="fg-mini-meta">' + e((a.description||'').substring(0,40)) + '</div>';
     html += '</div>';
   });
-  html += '</div></div>';
+  html += '</div>';
 
-  html += '</div></div>'; // branches + discover wrapper
+  html += '</div></div>'; // children + discover node
 
-  // ── AUDIT ─────────────────────────────────────────────────────────────────────
+  // ── CONNECTOR: Discover → Audit ──────────────────────────────────────────
   if (scored.length > 0) {
-    html += '<div class="fg-stage" id="fgn-audit" style="margin-top:44px">';
-    html += '<div class="fg-stage-lbl"><span class="fg-step-n">02</span> Audit — real HTTP probes · OpenAI scoring · weighted formula</div>';
-    html += '<div class="fg-stage-body">';
-    // Score formula legend
-    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;font-size:9px;color:var(--dim)">';
-    html += '<span style="color:#ccc;font-weight:500">Score formula:</span>';
+    html += '<div class="ft-connector"><div class="ft-connector-label">evaluate</div></div>';
+
+    // ── LEVEL 3: AUDIT ────────────────────────────────────────────────────────
+    html += '<div class="ft-node hub evaluate" id="fgn-audit">';
+    html += '<div class="ft-node-label" style="color:var(--orange)">&#x25C6; Audit & Score <span style="color:var(--dim);margin-left:auto">' + scored.length + ' agents evaluated</span></div>';
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:9px;color:var(--dim)">';
+    html += '<span style="color:#ccc;font-weight:500">Formula:</span>';
     html += '<span>Quality <span style="color:#dd8833">40%</span></span>';
     html += '<span>Consistency <span style="color:#dd8833">25%</span></span>';
     html += '<span>Latency <span style="color:#dd8833">20%</span></span>';
     html += '<span>Price <span style="color:#dd8833">15%</span></span>';
     html += '</div>';
-    html += '<div class="fg-audit-chips">';
+    html += '<div class="ft-children" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">';
     const sortedScored = scored.slice().sort((a,b) => (b.overall_score||0) - (a.overall_score||0));
     sortedScored.forEach(s => {
       const sc  = s.overall_score || 0;
-      const cls = sc >= 0.65 ? 'buy' : sc >= 0.45 ? 'watch' : 'avoid';
+      const cls = sc >= 0.65 ? 'ok' : sc >= 0.45 ? '' : 'err';
       const col = sc >= 0.65 ? 'var(--green)' : sc >= 0.45 ? 'var(--orange)' : 'var(--red)';
-      // Component scores
-      const q  = s.quality_score != null ? s.quality_score : null;
-      const cs = s.consistency_score != null ? s.consistency_score : null;
-      const ls = s.latency_score != null ? s.latency_score : null;
-      const ps = s.price_score != null ? s.price_score : null;
-      const lat = s.avg_latency_ms ? Math.round(s.avg_latency_ms) + 'ms' : null;
-      const qEst = (q === 0.5); // estimated quality flag
-      // Bar width helper (percent of chip width)
-      function bar(v, c) {
-        const w = Math.round((v||0)*100);
-        return '<div style="height:3px;background:#1a1a1a;border-radius:2px;margin-top:2px"><div style="width:'+w+'%;height:3px;background:'+c+';border-radius:2px"></div></div>';
-      }
-      html += '<div class="fg-chip ' + cls + '" style="min-width:150px">';
-      html += '<div class="fg-chip-team">' + e((s.team||'').substring(0,20)) + '</div>';
-      html += '<div style="display:flex;align-items:baseline;gap:6px;margin:4px 0">';
-      html += '<div class="fg-chip-score" style="color:' + col + ';font-size:28px">' + sc.toFixed(2) + '</div>';
-      html += '<div style="font-size:8px;color:' + col + ';text-transform:uppercase;letter-spacing:0.07em;font-weight:500">' + e(s.roi_decision||cls.toUpperCase()) + '</div>';
+      const decision = s.roi_decision || (sc >= 0.65 ? 'BUY' : sc >= 0.45 ? 'WATCH' : 'AVOID');
+      html += '<div class="ft-child ' + cls + '" style="text-align:center">';
+      html += '<div class="ft-child-name" style="font-size:11px">' + e((s.team||'').substring(0,20)) + '</div>';
+      html += '<div style="font-size:28px;font-weight:300;color:' + col + ';margin:4px 0">' + sc.toFixed(2) + '</div>';
+      html += '<div style="font-size:8px;text-transform:uppercase;letter-spacing:0.07em;color:' + col + ';font-weight:500">' + e(decision) + '</div>';
+      const q = s.quality_score, cs2 = s.consistency_score, ls = s.latency_score, ps = s.price_score;
+      function bar(v, c) { const w = Math.round((v||0)*100); return '<div style="height:3px;background:#1a1a1a;border-radius:2px;margin-top:2px"><div style="width:'+w+'%;height:3px;background:'+c+';border-radius:2px"></div></div>'; }
+      if (q != null) { html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between;margin-top:6px"><span>Quality</span><span>' + q.toFixed(2) + '</span></div>'; html += bar(q,'#4488cc'); }
+      if (cs2 != null) { html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Consistency</span><span>' + cs2.toFixed(2) + '</span></div>'; html += bar(cs2,'#8844cc'); }
+      if (ls != null) { html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Latency</span><span>' + ls.toFixed(2) + '</span></div>'; html += bar(ls,'#44aa66'); }
+      if (ps != null) { html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Price</span><span>' + ps.toFixed(2) + '</span></div>'; html += bar(ps,'#cc8833'); }
       html += '</div>';
-      // Component breakdown rows
-      if (q != null) {
-        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Quality' + (qEst?' <span style="color:var(--dim2)">est.</span>':'') + '</span><span style="color:#ccc">' + q.toFixed(2) + '</span></div>';
-        html += bar(q, '#4488cc');
-      }
-      if (cs != null) {
-        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Consistency</span><span style="color:#ccc">' + cs.toFixed(2) + '</span></div>';
-        html += bar(cs, '#8844cc');
-      }
-      if (ls != null) {
-        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Latency' + (lat?' <span style="color:var(--dim2)">'+lat+'</span>':'') + '</span><span style="color:#ccc">' + ls.toFixed(2) + '</span></div>';
-        html += bar(ls, '#44aa66');
-      }
-      if (ps != null) {
-        html += '<div style="font-size:9px;color:var(--dim);display:flex;justify-content:space-between"><span>Price value</span><span style="color:#ccc">' + ps.toFixed(2) + '</span></div>';
-        html += bar(ps, '#cc8833');
-      }
+    });
+    html += '</div></div>';
+  }
+
+  // ── CONNECTOR: Audit → Purchase ───────────────────────────────────────────
+  if (purchases.length > 0 || scored.length > 0) {
+    html += '<div class="ft-connector"><div class="ft-connector-label">transact</div></div>';
+  }
+
+  // ── LEVEL 4: PURCHASE ─────────────────────────────────────────────────────
+  if (purchases.length > 0) {
+    html += '<div class="ft-node hub result" id="fgn-purchase">';
+    html += '<div class="ft-node-label" style="color:var(--green)">&#x2713; Purchase <span style="color:var(--dim);margin-left:auto">' + purchases.length + ' blockchain tx</span></div>';
+    purchases.forEach(p => {
+      const tx = (p.tx_hash||'').substring(0,18);
+      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
+      const paid = p.plan_price || (p.price_per_credit ? p.price_per_credit + ' cr/req' : null);
+      html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #0a1a0a">';
+      html += '<div style="color:var(--green);font-size:14px;flex-shrink:0">&#x2713;</div>';
+      html += '<div style="flex:1">';
+      html += '<div style="font-weight:500;font-size:12px">' + e(p.team||'') + ' <span style="font-size:8px;padding:2px 5px;border-radius:2px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:9px;color:var(--dim);margin-top:2px">';
+      if (p.audit_score) html += '<span>score ' + (p.audit_score||0).toFixed(2) + '</span>';
+      if (paid) html += '<span style="color:var(--green)">' + e(paid) + '</span>';
+      html += '</div></div>';
+      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0">' + e(tx) + '…</div>';
       html += '</div>';
     });
     html += '</div>';
-    html += '<div style="font-size:9px;color:var(--dim2);margin-top:10px">Quality <i>est.</i> = endpoint requires payment, tested availability only. Sorted best → worst.</div>';
-    html += '</div></div>';
-  }
-
-  // ── PURCHASE ──────────────────────────────────────────────────────────────────
-  if (purchases.length > 0) {
-    html += '<div class="fg-stage green" id="fgn-purchase" style="margin-top:44px">';
-    html += '<div class="fg-stage-lbl"><span class="fg-step-n" style="background:#0d2a0d;color:var(--green)">03</span> Purchase — Nevermined order_plan() · ' + purchases.length + ' blockchain tx</div>';
-    html += '<div class="fg-stage-body">';
-    purchases.forEach(p => {
-      const tx    = (p.tx_hash||'').substring(0,20);
-      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
-      const paid  = p.plan_price || (p.price_per_credit ? p.price_per_credit + ' cr/req' : null);
-      html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #0a1a0a">';
-      html += '<div style="color:var(--green);font-size:16px;flex-shrink:0;line-height:1.2;margin-top:1px">✓</div>';
-      html += '<div style="flex:1">';
-      html += '<div style="font-weight:500;font-size:13px">' + e(p.team||'') + '<span style="font-size:8px;padding:2px 5px;border-radius:2px;margin-left:6px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span></div>';
-      html += '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:9px;color:var(--dim);margin-top:3px">';
-      html += '<span>' + e(p.roi_decision||'BUY') + '</span>';
-      if (p.audit_score) html += '<span>score <span style="color:#ccc">' + (p.audit_score||0).toFixed(2) + '</span></span>';
-      if (paid) html += '<span>paid <span style="color:var(--green)">' + e(paid) + '</span></span>';
-      if (p.credits_purchased) html += '<span><span style="color:#ccc">' + p.credits_purchased + '</span> credits acquired</span>';
-      html += '</div>';
-      html += '</div>';
-      if (tx) html += '<div style="font-family:monospace;font-size:9px;color:var(--dim2);flex-shrink:0;margin-top:3px">' + e(tx) + '…</div>';
-      html += '</div>';
-    });
-    html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px">Each tx = real Nevermined order_plan() on Base Sepolia. See agents running in the Business tab →</div>';
-    html += '</div></div>';
   } else if (scored.length > 0) {
-    html += '<div style="margin-top:44px;border:1px dashed var(--border);border-radius:6px;padding:12px 14px;text-align:center;color:var(--dim2);font-size:10px" id="fgn-purchase">No purchases yet — all scored agents failed payment or had insufficient budget.</div>';
+    html += '<div style="border:1px dashed var(--border);border-radius:6px;padding:12px 14px;text-align:center;color:var(--dim2);font-size:10px" id="fgn-purchase">No purchases yet.</div>';
   }
 
-  html += '</div>'; // fg-wrap
+  html += '</div>'; // ft-tree
   canvas.innerHTML = html;
 
-  // Track ZeroClick click
   canvas.querySelectorAll('[data-offer-id]').forEach(el => {
     el.addEventListener('click', () => {
       const id = el.dataset.offerId;
       if (id) fetch(S+'/zeroclick/click?offer_id='+encodeURIComponent(id),{method:'POST'}).catch(()=>{});
     });
   });
-  requestAnimationFrame(() => _drawFlowLines(canvas));
-}
-
-function _drawFlowLines(canvas) {
-  const old = canvas.querySelector('.fg-svg');
-  if (old) old.remove();
-
-  const cr = canvas.getBoundingClientRect();
-  const h  = canvas.scrollHeight + 20;
-
-  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('class','fg-svg');
-  svg.setAttribute('style','position:absolute;top:0;left:0;width:100%;height:'+h+'px;pointer-events:none;overflow:visible');
-
-  function nr(id) {
-    const el = document.getElementById(id);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    const st = canvas.scrollTop || 0;
-    return {
-      cx: r.left - cr.left + r.width/2,
-      cy_top: r.top - cr.top + st,
-      cy_bot: r.bottom - cr.top + st,
-    };
-  }
-
-  function line(x1,y1,x2,y2,col,w) {
-    const my = (y1+y2)/2;
-    const p = document.createElementNS('http://www.w3.org/2000/svg','path');
-    p.setAttribute('d','M'+x1+','+y1+' C'+x1+','+(y1+(my-y1)*0.75)+' '+x2+','+(y2-(my-y1)*0.75)+' '+x2+','+y2);
-    p.setAttribute('stroke',col||'#2a2a2a');
-    p.setAttribute('stroke-width',w||'1');
-    p.setAttribute('fill','none');
-    p.setAttribute('opacity','0.7');
-    svg.appendChild(p);
-  }
-
-  const goal   = nr('fgn-goal');
-  const mindra = nr('fgn-mindra');
-  const disc   = nr('fgn-discover');
-  const mkt    = nr('fgn-mkt');
-  const exaN   = nr('fgn-exa');
-  const api    = nr('fgn-apify');
-  const audit  = nr('fgn-audit');
-  const purch  = nr('fgn-purchase');
-
-  // Goal → Mindra (if present)
-  if (goal && mindra) line(goal.cx, goal.cy_bot, mindra.cx, mindra.cy_top, '#1a3044', 1.5);
-
-  // Mindra → Discover columns (or Goal → Discover if no Mindra)
-  const fanSrc = mindra || goal;
-  if (fanSrc && mkt)   line(fanSrc.cx, fanSrc.cy_bot, mkt.cx,   mkt.cy_top,   '#553300', 1.5);
-  if (fanSrc && exaN)  line(fanSrc.cx, fanSrc.cy_bot, exaN.cx,  exaN.cy_top,  '#553300', 1.5);
-  if (fanSrc && api)   line(fanSrc.cx, fanSrc.cy_bot, api.cx,   api.cy_top,   '#553300', 1.5);
-
-  // 3 columns → Audit (fan in)
-  if (audit) {
-    if (mkt)  line(mkt.cx,  mkt.cy_bot,  audit.cx, audit.cy_top, '#2a2a2a', 1);
-    if (exaN) line(exaN.cx, exaN.cy_bot, audit.cx, audit.cy_top, '#2a2a2a', 1);
-    if (api)  line(api.cx,  api.cy_bot,  audit.cx, audit.cy_top, '#2a2a2a', 1);
-  } else if (purch && disc) {
-    // If no audit, connect discover directly to purchase
-    if (mkt)  line(mkt.cx,  mkt.cy_bot,  purch.cx, purch.cy_top, '#1a4a1a', 1);
-    if (exaN) line(exaN.cx, exaN.cy_bot, purch.cx, purch.cy_top, '#1a4a1a', 1);
-    if (api)  line(api.cx,  api.cy_bot,  purch.cx, purch.cy_top, '#1a4a1a', 1);
-  }
-
-  // Audit → Purchase
-  if (audit && purch) line(audit.cx, audit.cy_bot, purch.cx, purch.cy_top, '#1a4a1a', 1.5);
-
-  canvas.style.position = 'relative';
-  canvas.insertBefore(svg, canvas.firstChild);
 }
 
 // ── Business Dashboard ────────────────────────────────────────────────────────
@@ -1236,9 +1286,7 @@ function renderBizDashboard(data) {
   const purchases = (data.purchases || []).filter(p => p.purchased);
   const realOuts  = (data.business_outputs || []).filter(b => b.status === 'ok' && (b.content||'').length > 20);
   const execSynth = data.execution_synthesis || '';
-  const trinity   = data.trinity_plan || [];
-  const trinityAgents = data.trinity_agents || [];
-  const tmplColors = {cornelius:'#334499',ruby:'#993344',outbound:'#449933',webmaster:'#996633'};
+  const accentColors = ['#4488cc','#cc6644','#44aa66','#aa44aa','#ccaa33','#44aacc'];
 
   let html = '';
 
@@ -1246,191 +1294,159 @@ function renderBizDashboard(data) {
   html += '<div style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:18px">';
   html += '<div style="font-size:16px;font-weight:500;margin-bottom:4px">' + e(goal) + '</div>';
   html += '<div style="display:flex;gap:14px;font-size:9px;color:var(--dim);flex-wrap:wrap;text-transform:uppercase;letter-spacing:0.06em">';
-  if (purchases.length) html += '<span style="color:var(--green)">✓ ' + purchases.length + ' purchased</span>';
-  if (realOuts.length)  html += '<span style="color:var(--green);display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + realOuts.length + ' live response' + (realOuts.length>1?'s':'') + '</span>';
+  if (purchases.length) html += '<span style="color:var(--green)">' + purchases.length + ' agent' + (purchases.length>1?'s':'') + ' purchased from marketplace</span>';
+  if (realOuts.length)  html += '<span style="color:var(--green);display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + realOuts.length + ' workflow' + (realOuts.length>1?'s':'') + ' responded</span>';
   else if (!purchases.length) html += '<span style="color:var(--dim2)">no agents yet — run a strategy in Chat</span>';
   html += '</div></div>';
 
-  // ── PURCHASED AGENT CARDS ────────────────────────────────────────────────────
+  // ── AGENT WORKFLOW CARDS ──
   if (purchases.length > 0) {
-    // Build a lookup of ALL business_outputs by team (including failed attempts)
     const allOutputs = data.business_outputs || [];
     const outputByTeam = {};
     allOutputs.forEach(o => { if (o.team) outputByTeam[o.team] = o; });
 
-    const anyLive = purchases.some(p => {
-      const o = outputByTeam[p.team];
-      return o && o.status === 'ok' && (o.content||'').length > 10;
-    });
-    const hdrColor = anyLive ? 'var(--green)' : 'var(--dim)';
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:' + hdrColor + ';margin-bottom:10px">Purchased agents — ' + purchases.length + ' acquired</div>';
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Purchased agent workflows</div>';
     html += '<div class="biz-grid">';
+
     purchases.forEach((p, idx) => {
-      const tx      = (p.tx_hash||'').substring(0,18);
-      const out     = outputByTeam[p.team] || null;
+      const tx = (p.tx_hash||'').substring(0,18);
+      const out = outputByTeam[p.team] || null;
       const hasLive = out && out.status === 'ok' && (out.content||'').length > 10;
       const hasFail = out && out.status !== 'ok';
-      const isTrinity = (p.endpoint||'').includes('abilityai.dev');
-      const tri     = trinity[idx] || {};
-      const tplKey  = (tri.template||'').toLowerCase();
-      const accentCol = hasLive ? (isTrinity ? 'var(--green)' : '#4488cc') : (tmplColors[tplKey] || '#334455');
-
-      html += '<div class="biz-agent-card ' + (tplKey||'') + '" style="border-color:' + (hasLive ? '#1a4a1a' : '#1a1a2a') + '">';
-      html += '<div style="height:2px;background:' + accentCol + ';border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
-
-      // Header
-      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
-      html += '<div>';
-      html += '<div class="biz-agent-name">' + (isTrinity ? '▲ ' : '') + e(p.team||'') + '</div>';
+      const accent = accentColors[idx % accentColors.length];
+      const desc = p.description || p.category || '';
       const epHost = (p.endpoint||'').replace('https://','').replace('http://','').split('/')[0];
-      html += '<div class="biz-agent-role">' + (isTrinity ? 'TrinityOS · ' : '') + e(epHost.substring(0,28)) + '</div>';
+
+      html += '<div class="biz-agent-card" style="border-color:' + (hasLive ? '#1a4a1a' : '#1a1a2a') + '">';
+      html += '<div style="height:2px;background:' + accent + ';border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
+
+      html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
+      html += '<div>';
+      html += '<div class="biz-agent-name">' + e(p.team||'Unknown Agent') + '</div>';
+      html += '<div class="biz-agent-role">' + e(epHost.substring(0,32)) + '</div>';
       html += '</div>';
-      const badge = p.repeat_purchase ? 'background:#2a2a00;color:var(--orange)' : 'background:#0d2a0d;color:var(--green)';
-      html += '<span style="font-size:8px;padding:2px 6px;border-radius:2px;' + badge + '">' + (p.repeat_purchase?'REPEAT':'NEW') + '</span>';
+      if (p.plan_price) {
+        html += '<span style="font-size:8px;padding:2px 6px;border-radius:2px;background:#0d1a2d;color:#4488cc">' + e(p.plan_price) + '</span>';
+      }
       html += '</div>';
 
-      // Output area — honest status, no fake spinners
-      if (hasLive) {
-        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>' + (isTrinity ? 'TrinityOS response' : 'Live response') + '</div>';
-        html += '<div class="biz-agent-output">' + e((out.content||'').substring(0,500)).replace(/\\n/g,'<br>') + '</div>';
-      } else if (hasFail) {
-        // Show the real error — no fake spinner
-        const errSt = (out.status||'');
-        let errMsg = '';
-        if (errSt.includes('402'))      errMsg = 'Endpoint returned 402 — needs fresh access token. Use "Run →" to re-try.';
-        else if (errSt.includes('403')) errMsg = 'Payment token rejected (403) — scheme mismatch or facilitator error. Use "Run →" to retry.';
-        else if (errSt.includes('500') || errSt.includes('502')) errMsg = 'Endpoint returned ' + errSt.replace('http_','') + ' — agent server may be temporarily down.';
-        else if (errSt.includes('404')) errMsg = 'Endpoint 404 — this agent may have changed URLs.';
-        else if (errSt === 'no_token')  errMsg = 'Could not obtain access token — check NVM_BUYER_API_KEY.';
-        else if (errSt === 'skip')      errMsg = 'Not called — endpoint or plan_id missing.';
-        else                            errMsg = 'Call failed: ' + errSt;
-        html += '<div style="font-size:9px;color:var(--orange);margin-bottom:6px">' + e(errMsg) + '</div>';
-        html += '<div style="font-size:9px;color:var(--dim2)">Use "Run →" below to query this agent directly.</div>';
-      } else {
-        // No call was attempted yet
-        html += '<div style="font-size:9px;color:var(--dim2);margin-bottom:6px">Agent purchased — no auto-call attempted yet.</div>';
-        html += '<div style="font-size:9px;color:var(--dim2)">Use "Run →" below to query it directly.</div>';
+      if (desc) {
+        html += '<div style="font-size:10px;color:var(--dim);line-height:1.5;margin-bottom:8px;padding:6px 8px;background:#050505;border-radius:3px;border-left:2px solid ' + accent + '">' + e(desc.substring(0,200)) + '</div>';
       }
 
-      // NVM transaction line
       if (tx) {
-        html += '<div style="font-size:9px;color:var(--dim2);margin-top:8px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);padding-top:6px">';
-        html += '<span style="color:var(--green)">✓ NVM tx</span>';
-        html += '<span style="font-family:monospace">' + e(tx) + '…</span>';
+        html += '<div style="font-size:9px;color:var(--dim2);display:flex;gap:8px;align-items:center;margin-bottom:8px">';
+        html += '<span style="color:var(--green)">NVM tx</span>';
+        html += '<span style="font-family:monospace">' + e(tx) + '</span>';
         if (p.audit_score) html += '<span style="margin-left:auto;color:var(--dim)">score ' + p.audit_score.toFixed(2) + '</span>';
         html += '</div>';
       }
 
-      // Query input — primary interaction
-      html += '<div style="margin-top:10px;display:flex;gap:6px">';
-      html += '<input type="text" placeholder="Ask this agent anything..." data-agent-idx="' + idx + '"'
-        + ' style="flex:1;background:#0a0a0a;border:1px solid var(--border);border-radius:3px;padding:6px 8px;font-size:10px;font-family:inherit;color:var(--fg);outline:none" />';
-      html += '<button data-agent-run="' + idx + '" style="background:transparent;border:1px solid ' + (hasLive?'var(--green)':'#4488cc') + ';color:' + (hasLive?'var(--green)':'#4488cc') + ';padding:6px 12px;border-radius:3px;font-size:9px;font-family:inherit;cursor:pointer;white-space:nowrap;font-weight:500">Run →</button>';
-      html += '</div>';
-      html += '<div class="biz-agent-response" id="biz-resp-' + idx + '" style="display:none;margin-top:8px;font-size:10px;color:#ccc;line-height:1.7;border-left:2px solid ' + accentCol + ';padding-left:8px;white-space:pre-wrap"></div>';
+      if (hasLive) {
+        html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>Workflow response</div>';
+        html += '<div class="biz-agent-output" style="max-height:200px;overflow-y:auto">' + e((out.content||'').substring(0,800)).replace(/\\n/g,'<br>') + '</div>';
+      } else if (hasFail) {
+        const errSt = (out.status||'');
+        let errMsg = '';
+        if (errSt.includes('402'))      errMsg = 'Agent needs fresh access token (402). Try running it below.';
+        else if (errSt.includes('403')) errMsg = 'Payment auth failed (403). Try running it below.';
+        else if (errSt.includes('500') || errSt.includes('502')) errMsg = 'Agent server error (' + errSt.replace('http_','') + '). May be temporarily down.';
+        else if (errSt.includes('404')) errMsg = 'Agent endpoint not found (404).';
+        else if (errSt === 'no_token')  errMsg = 'Could not get payment token.';
+        else if (errSt === 'skip')      errMsg = 'Endpoint or plan_id missing.';
+        else                            errMsg = 'Call failed: ' + errSt;
+        html += '<div style="font-size:9px;color:var(--orange);margin-bottom:4px">' + e(errMsg) + '</div>';
+      } else {
+        html += '<div style="font-size:9px;color:var(--dim2);margin-bottom:4px">Purchased but not yet executed. Try the workflow below.</div>';
+      }
 
-      html += '</div>'; // biz-agent-card
+      html += '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">';
+      html += '<div style="font-size:9px;color:var(--dim);margin-bottom:6px">Try this workflow:</div>';
+      html += '<textarea data-agent-idx="' + idx + '" placeholder="Describe what you want this agent to do..." rows="2"'
+        + ' style="width:100%;background:#0a0a0a;border:1px solid var(--border);border-radius:3px;padding:6px 8px;font-size:10px;font-family:inherit;color:var(--fg);outline:none;resize:vertical;min-height:36px;box-sizing:border-box"></textarea>';
+      html += '<div style="display:flex;gap:6px;margin-top:6px">';
+      html += '<button data-agent-run="' + idx + '" style="background:' + accent + ';border:none;color:#fff;padding:6px 14px;border-radius:3px;font-size:9px;font-family:inherit;cursor:pointer;white-space:nowrap;font-weight:500">Run workflow</button>';
+      html += '<span data-agent-status="' + idx + '" style="font-size:9px;color:var(--dim);align-self:center"></span>';
+      html += '</div>';
+      html += '<div class="biz-agent-response" id="biz-resp-' + idx + '" style="display:none;margin-top:8px;font-size:10px;color:#ccc;line-height:1.7;border-left:2px solid ' + accent + ';padding-left:8px;white-space:pre-wrap;max-height:300px;overflow-y:auto"></div>';
+      html += '</div>';
+
+      html += '</div>';
     });
     html += '</div><div style="height:16px"></div>';
   }
 
-  // ── TRINITYOS AGENTS (called separately from purchases) ────────────────────
-  const triResponded = trinityAgents.filter(t => t.status === 'ok' && (t.content||'').length > 10);
-  if (triResponded.length > 0) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:10px">▲ TrinityOS Agent Intelligence</div>';
-    html += '<div class="biz-grid">';
-    triResponded.forEach(t => {
-      html += '<div class="biz-agent-card" style="border-color:#1a3a1a">';
-      html += '<div style="height:2px;background:var(--green);border-radius:2px 2px 0 0;margin:-16px -16px 12px -16px"></div>';
-      html += '<div class="biz-agent-name">▲ ' + e(t.agent||'') + '</div>';
-      html += '<div class="biz-agent-role">TrinityOS · ' + e((t.endpoint||'').replace('https://','').split('/')[0].substring(0,28)) + '</div>';
-      html += '<div style="font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin:8px 0 5px;display:flex;align-items:center;gap:4px"><span class="dot-pulse"></span>Live from TrinityOS</div>';
-      html += '<div class="biz-agent-output">' + e((t.content||'').substring(0,500)).replace(/\\n/g,'<br>') + '</div>';
-      html += '</div>';
-    });
-    html += '</div><div style="height:16px"></div>';
-  }
-
-  // ── EXECUTION SYNTHESIS ──────────────────────────────────────────────────────
+  // ── EXECUTION SYNTHESIS ──
   if (execSynth) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Strategy — synthesized from all agents</div>';
-    const synthLinesB = execSynth.split('\\n').filter(l => l.trim().length > 0);
-    const acols2 = ['#334499','#993344','#449933','#996633'];
-    const synthSecsB = [];
-    let curSecB = [];
-    synthLinesB.forEach(ln => {
-      if (/^(###|\\*\\*[A-Z]|\\d\\.\\s)/.test(ln) && curSecB.length > 0) { synthSecsB.push(curSecB.join(' ')); curSecB = []; }
-      curSecB.push(ln);
+    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--dim);margin-bottom:10px">Strategy — synthesized from purchased agents</div>';
+    const synthLines = execSynth.split('\\n').filter(l => l.trim().length > 0);
+    const synthSecs = [];
+    let curSec = [];
+    synthLines.forEach(ln => {
+      if (/^(###|\\*\\*[A-Z]|\\d\\.\\s)/.test(ln) && curSec.length > 0) { synthSecs.push(curSec.join(' ')); curSec = []; }
+      curSec.push(ln);
     });
-    if (curSecB.length > 0) synthSecsB.push(curSecB.join(' '));
-    if (synthSecsB.length > 1) {
-      synthSecsB.slice(0,4).forEach((sec, i) => {
-        const rawH = sec.replace(/^(###\\s+|\\*\\*)/,'').split(/[:(]/)[0].replace(/\\*\\*/g,'').trim().substring(0,35);
+    if (curSec.length > 0) synthSecs.push(curSec.join(' '));
+    if (synthSecs.length > 1) {
+      synthSecs.slice(0,6).forEach((sec, i) => {
+        const rawH = sec.replace(/^(###\\s+|\\*\\*)/,'').split(/[:(]/)[0].replace(/\\*\\*/g,'').trim().substring(0,40);
         const body = sec.replace(/^[^:]+:/,'').replace(/\\*\\*/g,'').trim();
-        const c = acols2[i % acols2.length];
-        const tri = trinity[i];
+        const c = accentColors[i % accentColors.length];
         html += '<div class="fg-synth-card" style="border-color:' + c + ';margin-bottom:8px">';
-        html += '<div class="fg-synth-title" style="color:#ccc">';
-        if (tri) html += '<span style="font-size:8px;color:' + c + ';text-transform:uppercase;letter-spacing:0.06em;margin-right:6px">' + e(tri.template||'') + '</span>';
-        html += e(rawH||('Section '+(i+1))) + '<span class="dot-pulse" style="background:' + c + ';margin-left:8px"></span></div>';
-        html += '<div class="fg-synth-body">' + e(body.substring(0,500)) + '</div>';
+        html += '<div class="fg-synth-title" style="color:#ccc">' + e(rawH||('Section '+(i+1))) + '</div>';
+        html += '<div class="fg-synth-body">' + e(body.substring(0,600)) + '</div>';
         html += '</div>';
       });
     } else {
-      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,800)) + '</div></div>';
+      html += '<div class="fg-synth-card"><div class="fg-synth-body">' + e(execSynth.substring(0,1000)) + '</div></div>';
     }
   }
 
   if (!purchases.length && !execSynth) {
-    html += '<div style="color:var(--dim2);font-size:11px;padding:20px 0;line-height:1.8">No agents purchased yet.<br>Go to <b style="color:var(--fg)">Chat</b> and describe a business goal — e.g. <i style="color:var(--dim)">"I want to build a marketing agency"</i>.<br>The agent will find, audit, and buy services from the marketplace on your behalf.</div>';
+    html += '<div style="color:var(--dim2);font-size:11px;padding:20px 0;line-height:1.8">No agents purchased yet.<br>Go to <b style="color:var(--fg)">Chat</b> and describe a business goal — e.g. <i style="color:var(--dim)">"I want to build a marketing agency"</i>.<br>The agent will search the Nevermined marketplace, buy real agent workflows, and let you try them here.</div>';
   }
 
   canvas.innerHTML = html;
 
-  // Wire up the "Run →" buttons for direct agent queries
+  // Wire up "Run workflow" buttons — calls /api/run-agent directly
   canvas.querySelectorAll('[data-agent-run]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.agentRun);
       const inp = canvas.querySelector('[data-agent-idx="' + idx + '"]');
       const resp = document.getElementById('biz-resp-' + idx);
+      const statusEl = canvas.querySelector('[data-agent-status="' + idx + '"]');
       const query = inp ? inp.value.trim() : '';
       const p = (data.purchases||[]).filter(pp=>pp.purchased)[idx];
       if (!query || !p) return;
 
       resp.style.display = 'block';
-      resp.textContent = 'Querying ' + (p.team||'agent') + '...';
+      resp.textContent = '';
+      if (statusEl) { statusEl.textContent = 'Running workflow...'; statusEl.style.color = 'var(--orange)'; }
       btn.disabled = true;
 
       try {
-        const r = await fetch(B + '/api/chat', {
+        const r = await fetch(B + '/api/run-agent', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({message: 'Query agent "' + (p.team||'') + '" with endpoint ' + (p.endpoint||'') + ': ' + query}),
+          body: JSON.stringify({
+            endpoint_url: p.endpoint || '',
+            plan_id: p.plan_id || '',
+            agent_id: p.agent_id || '',
+            query: query,
+            body_field: p.body_field || '',
+          }),
         });
-        if (!r.ok) { resp.textContent = 'Error ' + r.status; btn.disabled = false; return; }
-        if (!r.body) { resp.textContent = 'No response'; btn.disabled = false; return; }
-
-        resp.textContent = '';
-        const reader = r.body.getReader();
-        const dec = new TextDecoder();
-        let buf = '', text = '';
-        while (true) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          buf += dec.decode(value, {stream:true});
-          const lines = buf.split('\\n'); buf = lines.pop();
-          let ev = '';
-          for (const ln of lines) {
-            if (ln.startsWith('event: ')) ev = ln.slice(7).trim();
-            else if (ln.startsWith('data: ') && ev === 'token') {
-              try { text += JSON.parse(ln.slice(6)).text||''; } catch(err){}
-              resp.textContent = text;
-            }
-          }
+        const result = await r.json();
+        if (result.status === 'ok') {
+          resp.textContent = result.content || '(empty response)';
+          if (statusEl) { statusEl.textContent = 'Workflow completed'; statusEl.style.color = 'var(--green)'; }
+        } else {
+          resp.textContent = result.content || result.error || 'Unknown error';
+          if (statusEl) { statusEl.textContent = 'Workflow failed'; statusEl.style.color = 'var(--red)'; }
         }
-        if (!text) resp.textContent = 'No text response.';
       } catch(err) {
         resp.textContent = 'Error: ' + err.message;
+        if (statusEl) { statusEl.textContent = 'Network error'; statusEl.style.color = 'var(--red)'; }
       }
       btn.disabled = false;
     });
@@ -1443,80 +1459,8 @@ function sendFromBiz(text) {
   if (inp) { inp.value = text; document.getElementById('send-btn').click(); }
 }
 
-// ── Trinity Agent Detail Panel ────────────────────────────────────────────────
-function openTrinityPanel(idx) {
-  const fleet = window._trinityFleet;
-  if (!fleet) return;
-  const ag = fleet.agents[idx];
-  if (!ag) return;
-  const col = {cornelius:'#334499', ruby:'#993344', outbound:'#449933', webmaster:'#996633'}[(ag.template||'').toLowerCase()] || '#444466';
-  const apify = fleet.apify || [];
-
-  let html = '';
-  html += '<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">';
-  html += '<div style="font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:' + col + ';margin-bottom:4px">' + e(ag.template||'agent') + ' · AbilityAI Trinity</div>';
-  html += '<div style="font-size:18px;font-weight:500;margin-bottom:3px">' + e(ag.name||'') + '</div>';
-  html += '<div style="color:var(--dim);font-size:12px">' + e(ag.role||'') + '</div>';
-  html += '</div>';
-
-  html += '<div style="font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:8px">' + e(ag.task||'') + '</div>';
-  if (ag.output_preview) {
-    html += '<div style="border-left:2px solid #1a4a1a;padding:5px 10px;margin-bottom:12px;font-size:10px;color:#3a7a3a;font-style:italic">';
-    html += e(ag.output_preview);
-    html += '</div>';
-  }
-
-  // Goal context
-  html += '<div style="border:1px solid var(--border);border-radius:4px;padding:8px 10px;margin-bottom:16px;font-size:10px">';
-  html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:4px">Context</div>';
-  html += '<div style="color:var(--dim2)">Goal: ' + e(fleet.goal||'') + '</div>';
-  html += '</div>';
-
-  // Playbook suggestions
-  html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:8px">Suggested Playbooks</div>';
-  const playbooks = {
-    cornelius: ['Market research report', 'Competitor analysis', 'Industry trend analysis', 'Due diligence report'],
-    ruby:      ['Blog post creation', 'Social media calendar', 'Email sequence', 'Product description copy'],
-    outbound:  ['Lead generation', 'Cold outreach sequence', 'Sales pitch script', 'Follow-up automation'],
-    webmaster: ['Landing page audit', 'SEO analysis', 'Site performance report', 'Content gap analysis'],
-  };
-  const pbs = playbooks[(ag.template||'').toLowerCase()] || ['Custom task execution', 'Data analysis', 'Report generation'];
-  html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px">';
-  pbs.forEach(pb => {
-    html += '<span style="border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-size:10px;color:var(--dim)">' + e(pb) + '</span>';
-  });
-  html += '</div>';
-
-  // Related Apify actors
-  if (apify.length > 0) {
-    html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:8px">Related Automation Actors (Apify)</div>';
-    apify.slice(0,4).forEach(a => {
-      const url = a.url || a.apify_url || '';
-      html += '<div style="border:1px solid #221133;border-radius:4px;padding:8px 10px;margin-bottom:6px;background:#040309">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:baseline">';
-      html += '<div style="font-weight:500;font-size:11px">' + e((a.name||'Actor').substring(0,35)) + '</div>';
-      if (url) html += '<a href="' + e(url) + '" target="_blank" style="font-size:9px;color:#8855ff;text-decoration:none">Open Apify →</a>';
-      html += '</div>';
-      html += '<div style="font-size:9px;color:var(--dim2);margin-top:2px">' + e((a.description||'').substring(0,80)) + '</div>';
-      html += '</div>';
-    });
-  }
-
-  // Deploy with Trinity
-  html += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">';
-  html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:var(--dim);margin-bottom:8px">Deploy with Trinity</div>';
-  html += '<a href="https://us14.abilityai.dev" target="_blank" style="display:block;text-align:center;border:1px solid ' + col + ';border-radius:4px;padding:8px;font-size:11px;color:' + col + ';text-decoration:none">Launch ' + e(ag.name||ag.template||'Agent') + ' in Trinity →</a>';
-  html += '</div>';
-
-  (document.getElementById('trinity-panel-content')||{}).innerHTML = html;
-  document.getElementById('trinity-panel').classList.add('open');
-  document.getElementById('trinity-overlay').style.display = 'block';
-}
-
-function closeTrinityPanel() {
-  document.getElementById('trinity-panel').classList.remove('open');
-  document.getElementById('trinity-overlay').style.display = 'none';
-}
+function openTrinityPanel() {}
+function closeTrinityPanel() {}
 async function get(u) {
   try { const r = await fetch(u); return r.ok ? r.json() : null; }
   catch { return null; }
@@ -1694,6 +1638,14 @@ function renderAdCard(ad, score) {
 function renderOrchestration(data) {
   if (!data) return;
 
+  // Update sidebar goal node with the actual goal text
+  const goalNode = document.getElementById('wf-goal');
+  if (goalNode && data.goal) {
+    const stEl = goalNode.querySelector('.wf-node-status');
+    if (stEl) stEl.textContent = data.goal.substring(0,28);
+    goalNode.classList.add('done');
+  }
+
   // Mindra GTM agents
   const mindraAgents = data.mindra_agents || {};
   const mindraIdMap = {web_search:'mindra-web', linkedin:'mindra-linkedin', google:'mindra-google', github:'mindra-github', content:'mindra-content'};
@@ -1716,6 +1668,20 @@ function renderOrchestration(data) {
   window._mindraSucceeded = mindraOk;
   const mse = document.getElementById('mindra-succeeded');
   if (mse) mse.textContent = mindraOk + '/5';
+
+  // Update sidebar tree result node
+  const resultNode = document.getElementById('wf-result');
+  if (resultNode) {
+    resultNode.classList.remove('idle','running','done','failed');
+    resultNode.classList.add('done');
+    const stEl = resultNode.querySelector('.wf-node-status');
+    if (stEl) stEl.textContent = 'complete';
+  }
+  const goalNode = document.getElementById('wf-goal');
+  if (goalNode) {
+    const stEl = goalNode.querySelector('.wf-node-status');
+    if (stEl) stEl.textContent = data.goal ? data.goal.substring(0,30) : 'done';
+  }
 
   // Exa: only mark done if there are actual exa highlights
   const exaData = data.exa_research || {};
@@ -1769,24 +1735,59 @@ function renderOrchestration(data) {
 
 const ORCH_IDS = {'mindra-web':'orch-mindra-web', 'mindra-linkedin':'orch-mindra-linkedin', 'mindra-google':'orch-mindra-google', 'mindra-github':'orch-mindra-github', 'mindra-content':'orch-mindra-content', exa:'orch-exa', apify:'orch-apify', openai:'orch-openai', nevermined:'orch-nevermined', trinity:'orch-trinity', social:'orch-social'};
 
+const HUB_AGENTS = {
+  'mindra-web':'wf-mindra-hub','mindra-linkedin':'wf-mindra-hub','mindra-google':'wf-mindra-hub',
+  'mindra-github':'wf-mindra-hub','mindra-content':'wf-mindra-hub',
+  exa:'wf-discover-hub',apify:'wf-discover-hub',nevermined:'wf-discover-hub',
+  openai:'wf-evaluate-hub',trinity:'wf-evaluate-hub',social:'wf-evaluate-hub'
+};
+
 function orchSetAgent(id, status, msg) {
   const boxId = ORCH_IDS[id] || ('orch-agent-' + id);
   let box = document.getElementById(boxId);
-  if (!box) return;
-  box.className = 'agent-box ' + status;
-  const nameEl = box.querySelector('.agent-box-name');
-  const stEl   = box.querySelector('.agent-box-status');
-  if (stEl) stEl.innerHTML = '<span class="agent-pulse ' + status + '"></span>' + escHtml((msg||'').substring(0,22));
-  // score styling on done
-  const scoreEl = box.querySelector('.agent-box-score');
-  if (scoreEl && status === 'done') scoreEl.style.color = 'var(--green)';
-  if (scoreEl && status === 'failed') scoreEl.style.color = 'var(--red)';
+  if (box) {
+    const isTree = box.classList.contains('wf-node');
+    if (isTree) {
+      box.classList.remove('idle','running','done','failed');
+      box.classList.add(status);
+    } else {
+      box.className = 'agent-box ' + status;
+    }
+    const stEl = box.querySelector('.agent-box-status') || box.querySelector('.wf-node-status');
+    if (stEl) stEl.innerHTML = '<span class="agent-pulse ' + status + '"></span>' + escHtml((msg||'').substring(0,22));
+    const scoreEl = box.querySelector('.agent-box-score');
+    if (scoreEl && status === 'done') scoreEl.style.color = 'var(--green)';
+    if (scoreEl && status === 'failed') scoreEl.style.color = 'var(--red)';
+  }
+
+  // Update parent hub node in the sidebar tree
+  const hubId = HUB_AGENTS[id];
+  if (hubId) _updateHubStatus(hubId);
+}
+
+function _updateHubStatus(hubId) {
+  const hub = document.getElementById(hubId);
+  if (!hub) return;
+  const children = hub.closest('.wf-branch')?.querySelectorAll('.wf-node.leaf') || [];
+  let anyRunning = false, anyDone = false, allDone = true;
+  children.forEach(c => {
+    if (c.classList.contains('running')) anyRunning = true;
+    if (c.classList.contains('done')) anyDone = true;
+    if (!c.classList.contains('done') && !c.classList.contains('failed')) allDone = false;
+  });
+  hub.classList.remove('idle','running','done','failed');
+  if (allDone && anyDone) hub.classList.add('done');
+  else if (anyRunning) hub.classList.add('running');
+  else if (anyDone) hub.classList.add('running');
+  else hub.classList.add('idle');
 }
 
 function orchSetRunning() {
   ['mindra-web','mindra-linkedin','mindra-google','mindra-github','mindra-content','exa','apify','openai','nevermined','trinity','social'].forEach(id => {
     orchSetAgent(id, 'running', 'queued');
   });
+  const goalNode = document.getElementById('wf-goal');
+  if (goalNode) goalNode.classList.add('running');
 }
 
 // Map endpoint URLs to orchestration box IDs for live updates
@@ -2148,8 +2149,8 @@ async function sendMessage() {
                   + '<span style="color:var(--green);font-size:11px;font-weight:500">Strategy complete</span>'
                   + '<span style="color:var(--dim);font-size:10px">' + nPurchased + ' purchased · ' + nAgents + ' Mindra agents</span>'
                   + '<span style="flex:1"></span>'
-                  + '<button onclick="showView(\'flow\')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid #6ecbf5;color:#6ecbf5;padding:4px 12px;border-radius:3px;cursor:pointer">View Flow →</button>'
-                  + '<button onclick="showView(\'biz\')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--green);color:var(--green);padding:4px 12px;border-radius:3px;cursor:pointer">Business →</button>'
+                  + '<button onclick="showView(\\'flow\\')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid #6ecbf5;color:#6ecbf5;padding:4px 12px;border-radius:3px;cursor:pointer">View Flow →</button>'
+                  + '<button onclick="showView(\\'biz\\')" style="font-size:10px;font-family:inherit;background:transparent;border:1px solid var(--green);color:var(--green);padding:4px 12px;border-radius:3px;cursor:pointer">Business →</button>'
                   + '</div>';
                 // ZeroClick ad handled by the gate overlay
                 if (r.zeroclick_ad && !adGateActive) {
@@ -2199,6 +2200,7 @@ async function sendMessage() {
   }
 
   sending = false;
+  btn.disabled = false;
   refreshStats();
   if (!adGateActive) {
     showAdGate(lastStreamAd, 'Click to continue chatting');
@@ -2275,23 +2277,23 @@ async function refreshStats() {
     }
   }
 
-  // Mindra sidebar stats
-  const mindraInfo = tools['mindra'] || {};
+  // Marketplace sidebar stats
+  const nvmInfo = tools['nevermined'] || {};
   const mindraCallsEl = document.getElementById('mindra-calls');
-  if (mindraCallsEl) mindraCallsEl.textContent = mindraInfo.calls || 0;
+  if (mindraCallsEl) mindraCallsEl.textContent = nvmInfo.calls || 0;
   const mindraStatusEl = document.getElementById('mindra-status');
   if (mindraStatusEl) {
-    if (mindraInfo.status === 'active' || mindraInfo.calls > 0) {
+    if (nvmInfo.status === 'active' || nvmInfo.calls > 0) {
       mindraStatusEl.textContent = 'active';
-      mindraStatusEl.style.color = '#6ecbf5';
+      mindraStatusEl.style.color = 'var(--green)';
     } else {
       mindraStatusEl.textContent = 'ready';
     }
   }
-  // Mindra per-agent succeeded count (updated from tool_step events in SSE handler)
   const mindraSuccEl = document.getElementById('mindra-succeeded');
-  if (mindraSuccEl && window._mindraSucceeded !== undefined) {
-    mindraSuccEl.textContent = window._mindraSucceeded + '/5';
+  if (mindraSuccEl) {
+    const bought = b ? (b.total_decisions || 0) : 0;
+    mindraSuccEl.textContent = bought;
   }
 
   // ZeroClick — data lives in /stats (seller analytics module)
