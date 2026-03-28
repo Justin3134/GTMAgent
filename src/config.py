@@ -17,10 +17,19 @@ else:
     load_dotenv()  # fallback: search default locations
 
 # --- Seller (creates/verifies payments) ---
-NVM_API_KEY = os.environ.get("NVM_API_KEY", "")
+NVM_API_KEY = os.environ.get("NVM_API_KEY")
+if not NVM_API_KEY:
+    raise ValueError("NVM_API_KEY environment variable is required")
+
 NVM_ENVIRONMENT = os.environ.get("NVM_ENVIRONMENT", "sandbox")
-NVM_PLAN_ID = os.environ.get("NVM_PLAN_ID", "")
-NVM_AGENT_ID = os.environ.get("NVM_AGENT_ID", "")
+NVM_PLAN_ID = os.environ.get("NVM_PLAN_ID")
+if not NVM_PLAN_ID:
+    raise ValueError("NVM_PLAN_ID environment variable is required")
+
+NVM_AGENT_ID = os.environ.get("NVM_AGENT_ID")
+if not NVM_AGENT_ID:
+    raise ValueError("NVM_AGENT_ID environment variable is required")
+
 # Additional accepted plan IDs (e.g. GTMAgentUSDC) — comma-separated
 _extra = os.environ.get("NVM_EXTRA_PLAN_IDS", "")
 NVM_EXTRA_PLAN_IDS: list[str] = [p.strip() for p in _extra.split(",") if p.strip()]
@@ -30,14 +39,26 @@ NVM_ACCEPTED_PLAN_IDS: list[str] = ([NVM_PLAN_ID] if NVM_PLAN_ID else []) + NVM_
 # --- Buyer (separate account that *purchases* from the plan, e.g. justin.07823@gmail.com) ---
 # If not set, falls back to NVM_API_KEY (self-buy from same account — only works if
 # the seller account also purchased its own plan).
-NVM_BUYER_API_KEY = os.environ.get("NVM_BUYER_API_KEY", "") or NVM_API_KEY
+NVM_BUYER_API_KEY = os.environ.get("NVM_BUYER_API_KEY") or NVM_API_KEY
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is required")
+
 MODEL_ID = os.environ.get("MODEL_ID", "gpt-4o-mini")
 
-EXA_API_KEY = os.environ.get("EXA_API_KEY", "")
-ZEROCLICK_API_KEY = os.environ.get("ZEROCLICK_API_KEY", "")
-APIFY_API_KEY = os.environ.get("APIFY_API_KEY", "")
+EXA_API_KEY = os.environ.get("EXA_API_KEY")
+if not EXA_API_KEY:
+    raise ValueError("EXA_API_KEY environment variable is required")
+
+ZEROCLICK_API_KEY = os.environ.get("ZEROCLICK_API_KEY")
+if not ZEROCLICK_API_KEY:
+    raise ValueError("ZEROCLICK_API_KEY environment variable is required")
+
+APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
+if not APIFY_API_KEY:
+    raise ValueError("APIFY_API_KEY environment variable is required")
+
 MINDRA_API_KEY = os.environ.get("MINDRA_API_KEY", "")
 MINDRA_WORKFLOW_SLUG = os.environ.get("MINDRA_WORKFLOW_SLUG", "gtmagent")
 
