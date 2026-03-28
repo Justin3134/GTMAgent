@@ -56,28 +56,36 @@ async def run_audit(
     if overall_score >= 0.75:
         recommendation = "STRONG_BUY"
         reasoning = (
-            f"Excellent quality ({quality_result['score']:.2f}), "
-            f"good consistency ({consistency_result['score']:.2f}), "
-            f"acceptable latency ({latency_result['avg_ms']:.0f}ms)."
+            "Excellent quality ({:.2f}), "
+            "good consistency ({:.2f}), "
+            "acceptable latency ({:.0f}ms).".format(
+                quality_result['score'], consistency_result['score'], latency_result['avg_ms']
+            )
         )
     elif overall_score >= 0.6:
         recommendation = "BUY"
         reasoning = (
-            f"Good overall performance — quality: {quality_result['score']:.2f}, "
-            f"latency: {latency_result['avg_ms']:.0f}ms."
+            "Good overall performance — quality: {:.2f}, "
+            "latency: {:.0f}ms.".format(
+                quality_result['score'], latency_result['avg_ms']
+            )
         )
     elif overall_score >= 0.45:
         recommendation = "CAUTIOUS"
         reasoning = (
-            f"Mixed signals — quality {quality_result['score']:.2f}, "
-            f"consistency {consistency_result['score']:.2f}. Monitor before committing budget."
+            "Mixed signals — quality {:.2f}, "
+            "consistency {:.2f}. Monitor before committing budget.".format(
+                quality_result['score'], consistency_result['score']
+            )
         )
     else:
         recommendation = "AVOID"
         reasoning = (
-            f"Below threshold — quality {quality_result['score']:.2f}, "
-            f"consistency {consistency_result['score']:.2f}, "
-            f"latency {latency_result['avg_ms']:.0f}ms."
+            "Below threshold — quality {:.2f}, "
+            "consistency {:.2f}, "
+            "latency {:.0f}ms.".format(
+                quality_result['score'], consistency_result['score'], latency_result['avg_ms']
+            )
         )
 
     return {
@@ -140,8 +148,10 @@ async def run_compare(
         "winner": winner,
         "margin": round(margin, 3),
         "recommendation": (
-            f"{'Strong' if margin > 0.15 else 'Slight'} preference for {winner} "
-            f"(score difference: {margin:.3f})"
+            "{} preference for {} "
+            "(score difference: {:.3f})".format(
+                'Strong' if margin > 0.15 else 'Slight', winner, margin
+            )
         ),
     }
 
@@ -172,7 +182,7 @@ async def run_monitor(endpoint_url: str, threshold: float = 0.7) -> dict:
         "latency_ms": round(latency_ms, 1) if latency_ms else None,
         "threshold": threshold,
         "alert": alert,
-        "alert_message": f"Score {score:.2f} below threshold {threshold}" if alert else None,
+        "alert_message": "Score {:.2f} below threshold {}".format(score, threshold) if alert else None,
     }
 
 
@@ -205,10 +215,10 @@ async def test_latency(
             sample_body = None
         else:
             # Root URL — probe /sample for free quality data
-            direct_url = f"{base}/data"
+            direct_url = "{}/data".format(base)
             sample_body = None
             try:
-                sr = await client.get(f"{base}/sample", headers={"Content-Type": "application/json"})
+                sr = await client.get("{}/sample".format(base), headers={"Content-Type": "application/json"})
                 if sr.status_code == 200:
                     sample_body = sr.json()
             except Exception:
@@ -218,7 +228,7 @@ async def test_latency(
             start = time.monotonic()
             try:
                 if sample_body is not None:
-                    resp = await client.get(f"{base}/sample", headers={"Content-Type": "application/json"})
+                    resp = await client.get("{}/sample".format(base), headers={"Content-Type": "application/json"})
                 else:
                     resp = await client.post(
                         direct_url,
@@ -312,7 +322,7 @@ async def score_quality(
             base = 0.45 + lat_bonus + variance_penalty
             return {
                 "score": round(min(max(base, 0.3), 0.7), 3),
-                "analysis": f"Payment-gated — quality estimated from latency profile ({avg_lat:.0f}ms avg).",
+                "analysis": "Payment-gated — quality estimated from latency profile ({:.0f}ms avg).".format(avg_lat),
             }
         return {"score": 0.1, "analysis": "No successful responses received. Endpoint may be down."}
 
@@ -330,13 +340,17 @@ async def score_quality(
         score = 0.5 + (0.1 if len(response_text) > 100 else 0) + (0.1 if len(response_text) > 500 else 0)
         return {"score": min(score, 1.0), "analysis": "Heuristic scoring (no LLM). Length and structure evaluated."}
 
+    sanitized_query = query.replace('"', '\\"').replace('\n', '\\n')
+    sanitized_text = response_text.replace('"', '\\"').replace('\n', '\\n')
+    
     prompt = (
-        f'You are evaluating an AI service response.\n\n'
-        f'Query: "{query}"\n\n'
-        f'Response:\n{response_text}\n\n'
+        'You are evaluating an AI service response.\n\n'
+        'Query: "{}"\n\n'
+        'Response:\n{}\n\n'.format(sanitized_query, sanitized_text)
     )
     if ground_truth:
-        prompt += f'Ground truth (web search):\n{ground_truth[:2000]}\n\n'
+        sanitized_truth = ground_truth[:2000].replace('"', '\\"').replace('\n', '\\n')
+        prompt += 'Ground truth (web search):\n{}\n\n'.format(sanitized_truth)
     prompt += (
         'Rate quality 0.0–1.0 on relevance, completeness, accuracy, structure.\n'
         'Respond with ONLY: {"score": 0.XX, "analysis": "brief explanation"}'
@@ -355,7 +369,7 @@ async def score_quality(
         return {"score": float(result["score"]), "analysis": result["analysis"]}
     except Exception as e:
         _analytics_mod.record_tool_call("openai", "error")
-        return {"score": 0.5, "analysis": f"LLM scoring failed: {e}"}
+        return {"score": 0.5, "analysis": "LLM scoring failed: {}".format(str(e))}
 
 
 async def check_consistency(
@@ -363,160 +377,4 @@ async def check_consistency(
     openai_api_key: str,
     model_id: str = "gpt-4o-mini",
 ) -> dict:
-    """Check consistency across multiple responses from the same endpoint."""
-    successful = [r for r in responses if r.get("status") == 200 and r.get("body")]
-
-    if len(successful) < 2:
-        if successful:
-            return {"score": 0.7, "analysis": "Single successful response — cannot fully assess consistency."}
-        payment_responses = [r for r in responses if r.get("status") == 402]
-        if payment_responses:
-            latencies = [r.get("elapsed_ms", 5000) for r in payment_responses]
-            if len(latencies) >= 2:
-                spread = max(latencies) - min(latencies)
-                avg = sum(latencies) / len(latencies) if latencies else 1
-                rel_spread = spread / avg if avg > 0 else 1
-                score = max(0.5, min(0.85, 0.8 - rel_spread * 0.3))
-                return {"score": round(score, 3), "analysis": f"Payment-gated — consistency from latency stability (spread {spread:.0f}ms / {rel_spread:.1%} relative)."}
-            return {"score": 0.7, "analysis": "Payment-gated endpoint — consistency assessed on availability only."}
-        return {"score": 0.2, "analysis": "Insufficient successful responses for consistency check."}
-
-    bodies = []
-    for r in successful:
-        b = r["body"]
-        bodies.append(json.dumps(b)[:1500] if isinstance(b, dict) else str(b)[:1500])
-
-    if not openai_api_key:
-        lengths = [len(b) for b in bodies]
-        var = statistics.variance(lengths) if len(lengths) > 1 else 0
-        avg = statistics.mean(lengths)
-        rel_var = var / (avg ** 2) if avg > 0 else 1
-        return {"score": min(max(0.3, 1.0 - rel_var * 10), 1.0), "analysis": f"Heuristic check — length variance {var:.0f}"}
-
-    pairs = "\n---\n".join(f"Response {i+1}:\n{b}" for i, b in enumerate(bodies))
-    prompt = (
-        f'Compare these {len(bodies)} responses from the same service to the same query.\n\n'
-        f'{pairs}\n\n'
-        'Rate consistency 0.0–1.0 (1.0 = identical, 0.1 = contradictory).\n'
-        'Respond with ONLY: {"score": 0.XX, "analysis": "brief explanation"}'
-    )
-
-    try:
-        client = AsyncOpenAI(api_key=openai_api_key)
-        completion = await client.chat.completions.create(
-            model=model_id,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=200,
-        )
-        result = json.loads(completion.choices[0].message.content.strip())
-        return {"score": float(result["score"]), "analysis": result["analysis"]}
-    except Exception as e:
-        return {"score": 0.5, "analysis": f"LLM consistency check failed: {e}"}
-
-
-async def analyze_price(endpoint_url: str) -> dict:
-    """Analyze the pricing of a service endpoint."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            resp = await client.get(f"{endpoint_url.rstrip('/')}/pricing")
-            if resp.status_code == 200:
-                data = resp.json()
-                tiers = data.get("tiers", [])
-                if tiers:
-                    credits = [t.get("credits", 0) for t in tiers]
-                    lo, hi = min(credits), max(credits)
-                    if lo <= 1:
-                        score = 0.9
-                    elif lo <= 3:
-                        score = 0.75
-                    elif lo <= 5:
-                        score = 0.6
-                    elif lo <= 10:
-                        score = 0.4
-                    else:
-                        score = 0.25
-                    return {
-                        "score": score,
-                        "analysis": f"{len(tiers)} tier(s), {lo}–{hi} credits. {'Competitive' if score >= 0.7 else 'Above average'} pricing.",
-                    }
-        except Exception:
-            pass
-    host = endpoint_url.split("//")[-1].split("/")[0].lower() if "//" in endpoint_url else endpoint_url.lower()
-    if "abilityai" in host or "trinity" in host:
-        return {"score": 0.55, "analysis": "AbilityAI/Trinity agent — competitive multi-agent pricing."}
-    elif "vercel" in host or "netlify" in host:
-        return {"score": 0.6, "analysis": "Hosted on managed platform — typically free-tier friendly pricing."}
-    elif "agentbank" in host or "wagmi" in host:
-        return {"score": 0.45, "analysis": "Agent bank — variable pricing depending on underlying agents."}
-    return {"score": 0.5, "analysis": "No pricing endpoint found — using default score."}
-
-
-# ---------------------------------------------------------------------------
-# Exa helper
-# ---------------------------------------------------------------------------
-
-async def _exa_ground_truth(query: str, api_key: str) -> str:
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            "https://api.exa.ai/search",
-            headers={"x-api-key": api_key, "Content-Type": "application/json"},
-            json={"query": query, "numResults": 3, "contents": {"text": {"maxCharacters": 500}}},
-        )
-        if resp.status_code == 200:
-            _analytics_mod.record_tool_call("exa", "ok")
-            results = resp.json().get("results", [])
-            return "\n".join(f"- {r.get('title', '')}: {r.get('text', '')[:300]}" for r in results)
-        _analytics_mod.record_tool_call("exa", "error")
-    return ""
-
-
-async def analyze_with_exa(url: str, query: str = "", exa_api_key: str = "") -> dict:
-    """Crawl a URL with Exa and return structured content summary."""
-    if not exa_api_key:
-        return {"url": url, "error": "No Exa API key", "summary": "", "highlights": []}
-
-    result: dict = {"url": url, "title": "", "summary": "", "highlights": [], "search_context": []}
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        try:
-            resp = await client.post(
-                "https://api.exa.ai/contents",
-                headers={"x-api-key": exa_api_key, "Content-Type": "application/json"},
-                json={
-                    "urls": [url],
-                    "text": {"maxCharacters": 5000},
-                    "highlights": {"numSentences": 5, "query": query or "what does this service do"},
-                },
-            )
-            if resp.status_code == 200:
-                _analytics_mod.record_tool_call("exa", "ok")
-                data = resp.json()
-                pages = data.get("results", [])
-                if pages:
-                    page = pages[0]
-                    result["title"] = page.get("title", "")
-                    result["summary"] = (page.get("text") or "")[:3000]
-                    result["highlights"] = [h for h in page.get("highlights", []) if h]
-        except Exception:
-            pass
-
-        if query:
-            try:
-                resp = await client.post(
-                    "https://api.exa.ai/search",
-                    headers={"x-api-key": exa_api_key, "Content-Type": "application/json"},
-                    json={"query": query, "numResults": 3, "type": "auto",
-                           "contents": {"highlights": {"numSentences": 2}}},
-                )
-                if resp.status_code == 200:
-                    for r in resp.json().get("results", []):
-                        result["search_context"].append({
-                            "title": r.get("title", ""),
-                            "url": r.get("url", ""),
-                            "highlights": r.get("highlights", []),
-                        })
-            except Exception:
-                pass
-
-    return result
+    """Check consistency across multiple responses from the same
